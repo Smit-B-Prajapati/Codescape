@@ -1,0 +1,416 @@
+/* ==========================================================================
+   AI Trip Agent Page Styles - GlobeThrottle
+   Visual Direction: Modern Travel Planner, Glassmorphism, Micro-Animations
+   ========================================================================== */
+
+.ai-agent-container {
+  padding: 2rem 0 4rem 0;
+}
+
+/* Header & Intro */
+.ai-agent-header {
+  margin-bottom: 2rem;
+}
+
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-full);
+  color: #60a5fa;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* Prompt Box */
+.ai-prompt-card {
+  padding: 1.75rem;
+  margin-bottom: 2.5rem;
+  border-radius: var(--radius-md);
+}
+
+.ai-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  padding: 1rem;
+  resize: vertical;
+  transition: var(--transition-normal);
+  outline: none;
+}
+
+[data-theme="light"] .ai-textarea {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.ai-textarea:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+/* Quick Prompt Pills */
+.quick-prompts-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.quick-prompt-pill {
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: left;
+}
+
+.quick-prompt-pill:hover {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+/* Section Containers */
+.ai-section {
+  margin-bottom: 2.5rem;
+}
+
+.ai-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.ai-section-title span.badge-counter {
+  font-size: 0.8rem;
+  background: rgba(37, 99, 235, 0.2);
+  color: #60a5fa;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+}
+
+/* Agent Activity Stream */
+.activity-stream-card {
+  padding: 1.5rem;
+  border-left: 4px solid var(--primary-500);
+}
+
+.activity-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.activity-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  font-size: 0.95rem;
+  padding: 0.4rem 0;
+  transition: var(--transition-fast);
+}
+
+.activity-step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.step-completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.step-running {
+  background: rgba(37, 99, 235, 0.15);
+  color: #3b82f6;
+  animation: pulse 1.5s infinite;
+}
+
+.step-replanning {
+  background: rgba(129, 140, 248, 0.18);
+  color: #818cf8;
+}
+
+.step-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.step-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.step-pending {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dimmed);
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+
+/* Review Plan Top Banner */
+.ai-review-banner {
+  padding: 1.25rem 1.75rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.2);
+}
+
+/* Demo Simulation Badge */
+.demo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+/* Selected Option Badge */
+.selected-agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+}
+
+/* Requirements Grid */
+.req-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.req-card {
+  padding: 1.15rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+}
+
+.req-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dimmed);
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.req-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Option Cards (Transport & Hotels) */
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.item-card {
+  padding: 1.35rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: var(--transition-normal);
+}
+
+.item-card.is-selected {
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+}
+
+/* Itinerary Day Layout */
+.itinerary-days-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.itinerary-day-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+}
+
+.itinerary-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.slot-section {
+  margin-bottom: 1rem;
+}
+
+.slot-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.65rem;
+}
+
+.activity-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  transition: var(--transition-fast);
+}
+
+[data-theme="light"] .activity-item-row {
+  background: #f8fafc;
+}
+
+.activity-item-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Budget Table */
+.budget-summary-box {
+  padding: 1.75rem;
+  border-radius: var(--radius-md);
+}
+
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px dashed var(--border-glass);
+  font-size: 0.95rem;
+}
+
+.budget-row.total-row {
+  border-top: 2px solid var(--border-glass);
+  border-bottom: none;
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 1.25rem 0 0.5rem 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Action Controls Bar */
+.plan-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-glass);
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .plan-actions-bar {
+    flex-direction: column;
+  }
+  .plan-actions-bar button {
+    width: 100%;
+  }
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+}
