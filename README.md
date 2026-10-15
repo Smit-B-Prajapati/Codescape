@@ -1,6 +1,6 @@
-# GlobeTrotter — Personalized Travel Planning Platform
+# Codescape — Personalized Travel Planning Platform
 
-GlobeTrotter is a full-stack, production-quality travel planning web application that enables users to create personalized multi-city trips, manage stops and day-wise itineraries, calculate budgets, visualize travel schedules, and discover activities and destinations.
+Codescape is a full-stack, production-quality travel planning web application that enables users to create personalized multi-city trips, manage stops and day-wise itineraries, calculate budgets, visualize travel schedules, and discover activities and destinations.
 
 ---
 
