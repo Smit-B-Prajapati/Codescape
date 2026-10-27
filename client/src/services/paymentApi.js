@@ -87,6 +87,24 @@ export async function verifyRazorpayPayment({
 }
 
 /**
+ * Directly processes a test payment as successful without external bank redirects.
+ * 
+ * @param {Object} params
+ * @param {string} params.bookingId
+ * @returns {Promise<{ success: boolean, message: string, payment: Object, booking: Object }>}
+ */
+export async function processDirectPayment({ bookingId }) {
+  if (!bookingId) {
+    throw new Error('A booking ID is required to process payment');
+  }
+
+  return apiRequest('/payments/pay-direct', {
+    method: 'POST',
+    body: JSON.stringify({ bookingId }),
+  });
+}
+
+/**
  * Retrieves payment status by payment ID.
  * 
  * @param {string} paymentId 
@@ -185,6 +203,7 @@ export default {
   loadRazorpayCheckoutScript,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  processDirectPayment,
   getPaymentStatus,
   createPayment,
   confirmPayment,

@@ -60,6 +60,10 @@ const tripSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -8,6 +8,7 @@ import {
   confirmPayment,
   getPaymentById,
   getPaymentByBooking,
+  processDirectPayment,
 } from '../controllers/paymentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -18,6 +19,11 @@ router.post('/webhook', handleRazorpayWebhook);
 
 // Protected routes (require JWT authentication)
 router.use(protect);
+
+// @route   POST /api/payments/pay-direct
+// @desc    Direct test payment endpoint: instant successful confirmation without external mock bank redirects
+// @access  Private
+router.post('/pay-direct', processDirectPayment);
 
 // @route   POST /api/payments/create-order
 // @desc    Create an official Razorpay order (Test Mode)

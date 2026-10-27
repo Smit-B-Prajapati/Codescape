@@ -34,6 +34,16 @@ export const CITIES_DATASET = [
     description: 'UNESCO World Heritage city famous for Sabarmati Riverfront, Ashram, and historic architecture.',
   },
   {
+    id: 'city_junagadh',
+    city: 'Junagadh',
+    country: 'India',
+    region: 'South Asia',
+    costIndex: 'Budget',
+    popularity: 4.6,
+    image: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80',
+    description: 'Historic Gujarat city famed for Girnar mountain trails, Uparkot Fort, and Mahabat Maqbara.',
+  },
+  {
     id: 'city_bangalore',
     city: 'Bangalore',
     country: 'India',

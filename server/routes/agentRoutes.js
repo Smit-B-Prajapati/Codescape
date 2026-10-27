@@ -3,6 +3,7 @@ import {
   parseTripRequirements,
   planTripWithAgent,
   approveTripPlan,
+  getAgentDiagnostics,
 } from '../controllers/agentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -10,6 +11,11 @@ const router = express.Router();
 
 // Enforce authentication for all agent operations
 router.use(protect);
+
+// @route   GET /api/agent/diagnostics
+// @desc    Safe AI provider status and diagnostics
+// @access  Private
+router.get('/diagnostics', getAgentDiagnostics);
 
 // @route   POST /api/agent/parse
 // @desc    Extract structured trip requirements from user's message

@@ -68,8 +68,15 @@ export async function approveTripPlan(planPayload) {
   });
 }
 
+export async function getAgentDiagnostics() {
+  return apiRequest('/agent/diagnostics', {
+    method: 'GET',
+  });
+}
+
 export default {
   planTripWithAgent,
   parseTripRequirements,
   approveTripPlan,
+  getAgentDiagnostics,
 };

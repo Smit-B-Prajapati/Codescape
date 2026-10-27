@@ -1,6 +1,8 @@
 import Trip from '../models/Trip.js';
 import Stop from '../models/Stop.js';
 import Activity from '../models/Activity.js';
+import { getNextSlotActivity } from '../services/itineraryService.js';
+import { estimateActivityCostsWithAi, isInherentlyFreeExperience } from '../services/activityPricingService.js';
 
 /**
  * @route   GET /api/trips/:tripId/itinerary
@@ -33,6 +35,78 @@ export const getItinerary = async (req, res) => {
     // 3. Fetch activities ordered by date and time
     const activities = await Activity.find({ trip: trip._id }).sort({ date: 1, time: 1 }).lean();
 
+    // Auto-heal duplicate activities across the trip so existing saved trips also become 100% unique
+    const stopCityMap = new Map(stops.map((s) => [s._id.toString(), s.city]));
+    const defaultCity = stops[0]?.city || trip.name?.split(' ')[0] || 'Goa';
+    const seenTripNames = new Set();
+
+    for (let i = 0; i < activities.length; i++) {
+      const act = activities[i];
+      const normKey = (act.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!normKey || seenTripNames.has(normKey)) {
+        const actCity = (act.stop && stopCityMap.get(act.stop.toString())) || defaultCity;
+        const timeStr = String(act.time || '').toLowerCase();
+        let slotPeriod = 'morning';
+        if (timeStr.includes('pm')) {
+          const hour = parseInt(timeStr, 10);
+          slotPeriod = (hour >= 6 && hour < 12) ? 'evening' : 'afternoon';
+        } else if (timeStr.includes(':')) {
+          const hour = parseInt(timeStr.split(':')[0], 10);
+          slotPeriod = hour >= 18 ? 'evening' : (hour >= 12 ? 'afternoon' : 'morning');
+        }
+
+        // Find a unique replacement activity for this destination and period
+        const replacement = getNextSlotActivity([], actCity, slotPeriod, i + 1, seenTripNames);
+        act.name = replacement.name;
+        act.category = replacement.category || act.category;
+        act.description = replacement.description || act.description;
+        seenTripNames.add(replacement.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+        // Update database document in background so the trip is permanently healed
+        await Activity.findByIdAndUpdate(act._id, {
+          name: act.name,
+          category: act.category,
+          description: act.description,
+        });
+      } else {
+        seenTripNames.add(normKey);
+      }
+    }
+
+    // Auto-heal activities missing realistic pricing or unverified zero-cost paid activities
+    const actsNeedingPricing = activities.filter((a) => {
+      if (a.pricingType === 'free') return false;
+      const costNum = Number(a.cost);
+      if (isNaN(costNum) || a.cost === undefined || a.cost === null) return true;
+      if (costNum === 0) {
+        if (isInherentlyFreeExperience(a.name, a.category)) {
+          a.pricingType = 'free';
+          return false;
+        }
+        return true;
+      }
+      return false;
+    });
+
+    if (actsNeedingPricing.length > 0) {
+      const pricingCity = (stops[0] && stops[0].city) || defaultCity;
+      await estimateActivityCostsWithAi({
+        activities: actsNeedingPricing,
+        city: pricingCity,
+        currency: trip.currency || 'INR',
+      });
+
+      // Persist realistic costs in MongoDB
+      await Promise.all(
+        actsNeedingPricing.map((act) =>
+          Activity.findByIdAndUpdate(act._id, {
+            cost: act.cost,
+            pricingType: act.pricingType || (act.cost === 0 ? 'free' : 'estimated'),
+          })
+        )
+      );
+    }
+
     // 4. Calculate day-by-day breakdown from trip startDate to endDate
     const startDate = new Date(trip.startDate);
     const endDate = new Date(trip.endDate);
@@ -62,7 +136,7 @@ export const getItinerary = async (req, res) => {
         date: dateStr,
         stop: matchingStop ? { _id: matchingStop._id, city: matchingStop.city, country: matchingStop.country } : null,
         activities: dayActivities,
-        totalCost: dayActivities.reduce((sum, act) => sum + (act.cost || 0), 0),
+        totalCost: dayActivities.reduce((sum, act) => sum + (Number(act.cost) || 0), 0),
       });
 
       // Increment date by 1 day
@@ -71,7 +145,7 @@ export const getItinerary = async (req, res) => {
     }
 
     // Total itinerary budget calculation
-    const totalItineraryCost = activities.reduce((sum, act) => sum + (act.cost || 0), 0);
+    const totalItineraryCost = activities.reduce((sum, act) => sum + (Number(act.cost) || 0), 0);
 
     res.status(200).json({
       success: true,
@@ -81,6 +155,7 @@ export const getItinerary = async (req, res) => {
         description: trip.description,
         startDate: trip.startDate,
         endDate: trip.endDate,
+        currency: trip.currency || 'USD',
         coverPhoto: trip.coverPhoto,
         isPublic: trip.isPublic,
       },

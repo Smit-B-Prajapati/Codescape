@@ -10,6 +10,8 @@ import {
   validateTravelers,
   resolveCountryCoverPhoto,
 } from './tripController.js';
+import { getAiServiceStatus } from '../services/aiService.js';
+import { getBaselineActivityCost } from '../services/activityPricingService.js';
 
 const inFlightApprovals = new Set();
 
@@ -42,7 +44,9 @@ export const resolveCountryForCity = (cityName) => {
     trimmed.includes('manali') ||
     trimmed.includes('shimla') ||
     trimmed.includes('agra') ||
-    trimmed.includes('varanasi')
+    trimmed.includes('varanasi') ||
+    trimmed.includes('junagadh') ||
+    trimmed.includes('rajkot')
   ) {
     return 'India';
   }
@@ -100,7 +104,7 @@ export const normalizeCategory = (category = '') => {
   return exact || 'Other';
 };
 
-const AGENT_EXECUTION_TIMEOUT_MS = 25000;
+const AGENT_EXECUTION_TIMEOUT_MS = 60000;
 
 /**
  * @route   POST /api/agent/parse
@@ -208,10 +212,25 @@ export const planTripWithAgent = async (req, res) => {
           executionLog: agentResult.executionLog || [],
         },
         requirements: agentResult.requirements || null,
+        itinerary: agentResult.itinerary || null,
+        budget: agentResult.budget || agentResult.budgetAnalysis || null,
+        transportOptions: agentResult.transportOptions || agentResult.toolResults?.transport || [],
+        hotelOptions: agentResult.hotelOptions || agentResult.toolResults?.hotels || [],
+        activities: agentResult.activities || agentResult.selectedOptions?.activities || [],
       });
     }
 
-    // 4. Return complete proposed plan
+    // 4. Return complete proposed plan with safe diagnostics
+    const status = getAiServiceStatus();
+    const safeDiagnostics = agentResult.aiDiagnostics || {
+      provider: status.provider,
+      model: status.model,
+      isConfigured: status.isConfigured,
+      isFallback: Boolean(agentResult.isFallback ?? status.isFallback),
+      liveAiAttempted: Boolean(!agentResult.isFallback),
+      liveAiSuccess: Boolean(!agentResult.isFallback),
+    };
+
     return res.status(200).json({
       success: true,
       agent: {
@@ -227,6 +246,8 @@ export const planTripWithAgent = async (req, res) => {
       requiresUserInput: false,
       requiresApproval: true,
       selectedOptions: agentResult.selectedOptions,
+      aiDiagnostics: safeDiagnostics,
+      isFallback: safeDiagnostics.isFallback,
     });
   } catch (error) {
     console.error('[Agent Plan Error]:', error.message);
@@ -591,27 +612,47 @@ export const approveTripPlan = async (req, res) => {
 
     // 11. Create Activities (using existing Activity model)
     const activityDocsToInsert = [];
+    const tripActivityNamesSeen = new Set();
     for (const { stopDoc, sg } of createdStops) {
       for (const day of sg.days) {
         const dayDate = new Date(day.date);
-        const slots = [
-          ...(day.morning || []),
-          ...(day.afternoon || []),
-          ...(day.evening || []),
-          ...(day.activities || []),
-        ];
+        const slots = (day.morning?.length || day.afternoon?.length || day.evening?.length)
+          ? [
+              ...(day.morning || []),
+              ...(day.afternoon || []),
+              ...(day.evening || []),
+            ]
+          : [...(day.activities || [])];
 
         for (const act of slots) {
+          const actName = (act.name || 'Planned Activity').trim();
+          const normKey = actName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!normKey || tripActivityNamesSeen.has(normKey)) {
+            continue; // Skip duplicate to guarantee 100% uniqueness in DB
+          }
+          tripActivityNamesSeen.add(normKey);
+
+          const normCat = normalizeCategory(act.category);
+          const rawCost = Number(act.cost);
+          const finalCost = !isNaN(rawCost) && rawCost >= 0
+            ? rawCost
+            : getBaselineActivityCost(normCat, currencyRes.value, actName, stopDoc.city);
+
           activityDocsToInsert.push({
             trip: trip._id,
             stop: stopDoc._id,
-            name: (act.name || 'Planned Activity').trim().slice(0, 150),
+            name: actName.slice(0, 150),
             description: (act.description || '').trim().slice(0, 500),
-            category: normalizeCategory(act.category),
+            category: normCat,
             date: dayDate,
             time: act.time || '10:00 AM',
             duration: Number(act.duration) || 60,
-            cost: Number(act.cost) || 0,
+            cost: finalCost,
+            currency: act.currency || currencyRes.value,
+            pricingType: act.pricingType || (finalCost === 0 ? 'free' : 'estimated'),
+            pricePerPerson: act.pricePerPerson !== false,
+            source: act.source || 'local_catalog',
+            isVerified: Boolean(act.isVerified),
             image: act.image || '',
           });
         }
@@ -620,18 +661,31 @@ export const approveTripPlan = async (req, res) => {
 
     // Direct plan activities fallback
     if (activityDocsToInsert.length === 0 && Array.isArray(plan.activities) && plan.activities.length > 0) {
-      const fallbackStopId = createdStops[0]?.stopDoc?._id;
+      const fallbackStop = createdStops[0]?.stopDoc;
+      const fallbackStopId = fallbackStop?._id;
       for (const act of plan.activities) {
+        const actName = (act.name || 'Planned Activity').trim();
+        const normCat = normalizeCategory(act.category);
+        const rawCost = Number(act.cost);
+        const finalCost = !isNaN(rawCost) && rawCost >= 0
+          ? rawCost
+          : getBaselineActivityCost(normCat, currencyRes.value, actName, fallbackStop?.city);
+
         activityDocsToInsert.push({
           trip: trip._id,
           stop: fallbackStopId,
-          name: (act.name || 'Planned Activity').trim().slice(0, 150),
+          name: actName.slice(0, 150),
           description: (act.description || '').trim().slice(0, 500),
-          category: normalizeCategory(act.category),
+          category: normCat,
           date: act.date ? new Date(act.date) : startDate,
           time: act.time || '10:00 AM',
           duration: Number(act.duration) || 60,
-          cost: Number(act.cost) || 0,
+          cost: finalCost,
+          currency: act.currency || currencyRes.value,
+          pricingType: act.pricingType || (finalCost === 0 ? 'free' : 'estimated'),
+          pricePerPerson: act.pricePerPerson !== false,
+          source: act.source || 'local_catalog',
+          isVerified: Boolean(act.isVerified),
           image: act.image || '',
         });
       }
@@ -660,9 +714,36 @@ export const approveTripPlan = async (req, res) => {
   }
 };
 
+/**
+ * @route   GET /api/agent/diagnostics
+ * @desc    Safe server-side diagnostics identifying configured AI provider, model, and status (never leaks secrets)
+ * @access  Private (Requires valid JWT)
+ */
+export const getAgentDiagnostics = async (req, res) => {
+  try {
+    const status = getAiServiceStatus();
+    return res.status(200).json({
+      success: true,
+      data: {
+        provider: status.provider,
+        model: status.model,
+        isConfigured: status.isConfigured,
+        isFallback: status.isFallback,
+        serverTime: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve agent diagnostics',
+    });
+  }
+};
+
 export default {
   parseTripRequirements,
   planTripWithAgent,
   approveTripPlan,
+  getAgentDiagnostics,
 };
 

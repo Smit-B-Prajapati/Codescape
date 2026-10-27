@@ -394,6 +394,15 @@ export const verifyRazorpayPayment = async (req, res) => {
     };
     await booking.save();
 
+    // Mark associated trip as officially approved and confirmed upon payment
+    if (booking.trip) {
+      try {
+        await Trip.findByIdAndUpdate(booking.trip, { isApproved: true });
+      } catch (tripErr) {
+        console.warn('[Payment Trip Approval Warning]:', tripErr.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Razorpay payment successfully verified and booking confirmed',
@@ -996,6 +1005,140 @@ export const getPaymentByBooking = async (req, res) => {
   }
 };
 
+/**
+ * @route   POST /api/payments/pay-direct
+ * @desc    Direct test payment endpoint: immediately processes and confirms payment as successful without external bank redirects
+ * @access  Private (Requires JWT)
+ */
+export const processDirectPayment = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to process payment',
+      });
+    }
+
+    if (!bookingId) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid bookingId is required',
+      });
+    }
+
+    const idStr = String(bookingId);
+    const query = idStr.startsWith('DEMO-BK-') || idStr.startsWith('GT-DEMO-')
+      ? { bookingReference: idStr }
+      : { _id: bookingId };
+
+    const booking = await Booking.findOne(query);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have permission to pay for this booking',
+      });
+    }
+
+    if (booking.status === 'confirmed') {
+      const existingPayment = await Payment.findOne({
+        booking: booking._id,
+        user: req.user._id,
+        status: 'success',
+      }).sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        status: 'success',
+        message: 'Payment has already been confirmed',
+        booking,
+        payment: existingPayment,
+      });
+    }
+
+    const amount = Number(booking.amount);
+    const currency = (booking.currency || 'INR').toUpperCase();
+    const finalTxnId = generateTestTransactionId();
+
+    // Create or update payment record as successful
+    let payment = await Payment.findOne({
+      booking: booking._id,
+      user: req.user._id,
+    }).sort({ createdAt: -1 });
+
+    if (!payment) {
+      payment = new Payment({
+        user: req.user._id,
+        booking: booking._id,
+        amount,
+        amountPaise: Math.round(amount * 100),
+        currency,
+        provider: 'Razorpay Instant Demo Gateway',
+        transactionId: finalTxnId,
+        status: 'success',
+        testMode: true,
+        paidAt: new Date(),
+      });
+    } else {
+      payment.status = 'success';
+      payment.transactionId = finalTxnId;
+      payment.paidAt = new Date();
+      payment.amount = amount;
+      payment.amountPaise = Math.round(amount * 100);
+      payment.currency = currency;
+      payment.provider = 'Razorpay Instant Demo Gateway';
+      payment.testMode = true;
+    }
+
+    await payment.save();
+
+    // Confirm booking
+    booking.status = 'confirmed';
+    booking.details = {
+      ...(booking.details || {}),
+      payment: {
+        paymentId: payment._id,
+        transactionId: finalTxnId,
+        amount,
+        currency,
+        status: 'success',
+        testMode: true,
+        paidAt: new Date(),
+        provider: 'Razorpay Instant Demo Gateway',
+      },
+    };
+    await booking.save();
+
+    // Mark associated trip as officially approved and confirmed upon payment
+    if (booking.trip) {
+      try {
+        await Trip.findByIdAndUpdate(booking.trip, { isApproved: true });
+      } catch (tripErr) {
+        console.warn('[Payment Trip Approval Warning]:', tripErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      status: 'success',
+      message: 'Payment processed successfully',
+      payment,
+      booking,
+    });
+  } catch (error) {
+    console.error('[Direct Payment Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error processing direct payment',
+    });
+  }
+};
+
 export default {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -1006,4 +1149,5 @@ export default {
   getPaymentById,
   getPaymentByBooking,
   generateTestTransactionId,
+  processDirectPayment,
 };
