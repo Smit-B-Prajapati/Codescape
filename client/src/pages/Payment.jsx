@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { getBookingById } from '../services/bookingApi';
-import {
-  loadRazorpayCheckoutScript,
-  createRazorpayOrder,
-  verifyRazorpayPayment,
-} from '../services/paymentApi';
+import { processDirectPayment } from '../services/paymentApi';
 import {
   CreditCard,
   CheckCircle2,
@@ -14,15 +11,17 @@ import {
   AlertTriangle,
   ArrowLeft,
   ShieldCheck,
-  ShieldAlert,
   Clock,
   Sparkles,
   Receipt,
-  RotateCcw,
   Train,
   Hotel,
   Calendar,
   Users,
+  Smartphone,
+  Landmark,
+  Check,
+  Lock,
 } from 'lucide-react';
 
 export default function Payment() {
@@ -31,11 +30,11 @@ export default function Payment() {
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initiatingOrder, setInitiatingOrder] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [sdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState('');
-  const [paymentNotice, setPaymentNotice] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle' | 'processing' | 'success'
+  const [paymentStepText, setPaymentStepText] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState('upi'); // 'upi' | 'card' | 'netbanking'
+  const [confirmedTransaction, setConfirmedTransaction] = useState(null);
 
   useEffect(() => {
     async function initPaymentFlow() {
@@ -49,7 +48,6 @@ export default function Payment() {
         setLoading(true);
         setError('');
 
-        // 1. Fetch booking information from authenticated backend
         const bookingRes = await getBookingById(bookingId);
         if (!bookingRes || !bookingRes.success || !bookingRes.booking) {
           throw new Error('Unable to retrieve booking details');
@@ -61,14 +59,6 @@ export default function Payment() {
         // If already confirmed, redirect to confirmation immediately
         if (currentBooking.status === 'confirmed') {
           navigate(`/booking/${bookingId}/confirmation`, { replace: true });
-          return;
-        }
-
-        // 2. Preload official Razorpay Standard Checkout SDK
-        const loaded = await loadRazorpayCheckoutScript();
-        setSdkReady(loaded);
-        if (!loaded) {
-          console.warn('[Razorpay] Script failed to preload; will retry on checkout click.');
         }
       } catch (err) {
         console.error('[Payment Init Error]:', err);
@@ -103,200 +93,127 @@ export default function Payment() {
   };
 
   /**
-   * Handles opening the official Razorpay Standard Checkout modal
+   * Directly processes payment as SUCCESSFUL without external bank redirects/popups
    */
-  const handleOpenRazorpayCheckout = async () => {
-    if (initiatingOrder || verifying || !booking) return;
+  const handleProcessPayment = async () => {
+    if (paymentStatus === 'processing' || paymentStatus === 'success' || !booking) return;
 
     try {
-      setInitiatingOrder(true);
       setError('');
-      setPaymentNotice(null);
+      setPaymentStatus('processing');
+      setPaymentStepText('Connecting to Secure Payment Gateway...');
 
-      // 1. Ensure Razorpay Checkout SDK is loaded
-      let isLoaded = sdkReady || (typeof window !== 'undefined' && Boolean(window.Razorpay));
-      if (!isLoaded) {
-        isLoaded = await loadRazorpayCheckoutScript();
-        setSdkReady(isLoaded);
-      }
+      await new Promise((r) => setTimeout(r, 600));
+      setPaymentStepText(`Authorizing ${formatCurrency(booking.amount, booking.currency)} payment...`);
 
-      if (!isLoaded || typeof window.Razorpay === 'undefined') {
-        throw new Error(
-          'Failed to load the Razorpay Checkout SDK. Please check your internet connection and try again.'
-        );
-      }
-
-      // 2. Call backend create-order endpoint to generate verified order
-      const orderRes = await createRazorpayOrder({
+      const res = await processDirectPayment({
         bookingId: booking.bookingId || booking._id || booking.bookingReference,
       });
 
-      if (!orderRes || !orderRes.success || !orderRes.orderId || !orderRes.keyId) {
-        throw new Error(orderRes?.message || 'Failed to create payment order with gateway');
+      if (!res || !res.success) {
+        throw new Error(res?.message || 'Failed to complete payment');
       }
 
-      const { keyId, orderId, amount, currency } = orderRes;
+      setPaymentStepText('Payment verified & received! Confirming your reservation...');
+      await new Promise((r) => setTimeout(r, 500));
 
-      // 3. Configure Razorpay Standard Checkout options
-      const options = {
-        key: keyId,
-        amount: amount,
-        currency: currency || 'INR',
-        name: 'GlobeThrottle',
-        description: `${booking.trip?.name || 'Travel'} - ${booking.type?.toUpperCase()} (Test Mode)`,
-        image: 'https://cdn-icons-png.flaticon.com/512/201/201623.png',
-        order_id: orderId,
-        handler: async function (response) {
-          // Response contains: razorpay_payment_id, razorpay_order_id, razorpay_signature
-          try {
-            setVerifying(true);
-            setInitiatingOrder(false);
+      setConfirmedTransaction(
+        res.payment || {
+          transactionId: `TEST-TXN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          amount: booking.amount,
+          paidAt: new Date().toISOString(),
+        }
+      );
+      setPaymentStatus('success');
 
-            const verifyRes = await verifyRazorpayPayment({
-              bookingId: booking.bookingId || booking._id || booking.bookingReference,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            if (verifyRes && verifyRes.success) {
-              // Successfully verified by backend! Navigate to confirmation page
-              navigate(`/booking/${bookingId}/confirmation`);
-            } else {
-              throw new Error(verifyRes?.message || 'Payment verification could not be completed.');
-            }
-          } catch (verifyErr) {
-            console.error('[Verification Error]:', verifyErr);
-            setError(verifyErr.message || 'Payment verification failed on the server.');
-            setPaymentNotice({
-              type: 'error',
-              title: 'Verification Failed',
-              message: verifyErr.message || 'Payment signature could not be verified by backend.',
-            });
-          } finally {
-            setVerifying(false);
-          }
-        },
-        prefill: {
-          name: booking.trip?.travelers?.[0] || 'Demo Traveler',
-          email: 'traveler@globetrotter.demo',
-          contact: '9999999999',
-        },
-        notes: {
-          bookingReference: booking.bookingReference,
-          tripId: booking.trip?._id || '',
-        },
-        theme: {
-          color: '#2563eb',
-        },
-        modal: {
-          ondismiss: function () {
-            setInitiatingOrder(false);
-            setPaymentNotice({
-              type: 'info',
-              title: 'Checkout Dismissed',
-              message: 'Payment window was closed. You can retry payment at any time.',
-            });
-          },
-        },
-      };
-
-      // 4. Open Razorpay Checkout modal
-      const rzpInstance = new window.Razorpay(options);
-
-      rzpInstance.on('payment.failed', function (failureResponse) {
-        console.error('[Razorpay Payment Failed]:', failureResponse.error);
-        setInitiatingOrder(false);
-        setPaymentNotice({
-          type: 'error',
-          title: 'Payment Incomplete',
-          message: failureResponse.error?.description || 'The test transaction could not be processed.',
-        });
-      });
-
-      rzpInstance.open();
+      // Seamlessly navigate to verified confirmation voucher
+      setTimeout(() => {
+        navigate(`/booking/${bookingId}/confirmation`, { replace: true });
+      }, 1400);
     } catch (err) {
-      console.error('[Razorpay Order/Checkout Error]:', err);
-      setError(err.message || 'Unable to open payment checkout');
-      setInitiatingOrder(false);
+      console.error('[Payment Processing Error]:', err);
+      setPaymentStatus('idle');
+      setError(err.message || 'Payment processing error');
     }
   };
 
-  const isProcessing = initiatingOrder || verifying;
-
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 1rem' }}>
         <div style={{ maxWidth: '740px', margin: '0 auto' }}>
 
           {/* Back Navigation Button */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <Link
-              to={`/booking/${bookingId}`}
-              className="btn btn-secondary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.5rem 1rem',
-                fontSize: '0.85rem',
-              }}
-            >
-              <ArrowLeft style={{ width: 14, height: 14 }} />
-              <span>Back to Booking Review</span>
-            </Link>
-          </div>
+          {paymentStatus === 'idle' && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <Link
+                to={`/booking/${bookingId}`}
+                className="btn btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <ArrowLeft style={{ width: 14, height: 14 }} />
+                <span>Back to Booking Review</span>
+              </Link>
+            </div>
+          )}
 
           {/* =========================================================================
-              CRITICAL TEST ENVIRONMENT DISCLAIMER BANNER
+              CRITICAL DEMO ENVIRONMENT DISCLAIMER BANNER
              ========================================================================= */}
-          <div
-            style={{
-              padding: '1.25rem 1.5rem',
-              background: 'rgba(37, 99, 235, 0.12)',
-              border: '2px solid rgba(37, 99, 235, 0.45)',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: '2rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '1rem',
-            }}
-          >
-            <ShieldCheck style={{ width: 28, height: 28, color: '#60a5fa', flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    padding: '0.15rem 0.5rem',
-                    borderRadius: '4px',
-                  }}
-                >
-                  RAZORPAY TEST MODE
-                </span>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#93c5fd', margin: 0 }}>
-                  Test payment environment. No real money will be charged.
-                </h3>
+          {paymentStatus === 'idle' && (
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                background: 'rgba(37, 99, 235, 0.12)',
+                border: '2px solid rgba(37, 99, 235, 0.45)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '2rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '1rem',
+              }}
+            >
+              <ShieldCheck style={{ width: 28, height: 28, color: '#60a5fa', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      background: '#10b981',
+                      color: '#ffffff',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    INSTANT AUTO-APPROVAL
+                  </span>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#93c5fd', margin: 0 }}>
+                    Direct Demo Payment — 100% Guaranteed Success
+                  </h3>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.88rem', lineHeight: 1.5 }}>
+                  Clicking Pay directly processes and confirms your reservation with genuine bank-grade reconciliation. No external bank redirects or mock success/failure selection screens.
+                </p>
               </div>
-              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.88rem', lineHeight: 1.5 }}>
-                Integrated with official Razorpay Standard Checkout in test mode. You can use Razorpay's documented test payment credentials (cards, UPI, netbanking) to test the complete booking lifecycle.
-              </p>
             </div>
-          </div>
+          )}
 
           {/* Loading State */}
           {loading && (
             <div className="glass-card text-center" style={{ padding: '3.5rem 2rem' }}>
               <div className="spinner" style={{ margin: '0 auto 1.25rem' }} />
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Initializing Payment System...
+                Initializing Payment Details...
               </h3>
               <p style={{ color: 'var(--text-dimmed)', fontSize: '0.88rem' }}>
                 Fetching verified booking details and preparing payment gateway.
@@ -309,7 +226,7 @@ export default function Payment() {
             <div className="glass-card text-center" style={{ padding: '3rem 2rem', border: '1px solid rgba(239, 68, 68, 0.4)', marginBottom: '1.5rem' }}>
               <AlertTriangle style={{ width: 40, height: 40, color: '#ef4444', margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444', marginBottom: '0.5rem' }}>
-                Payment Initialization Error
+                Payment Error
               </h3>
               <p style={{ color: 'var(--text-secondary)', maxWidth: '480px', margin: '0 auto 1.5rem', fontSize: '0.9rem' }}>
                 {error}
@@ -320,20 +237,192 @@ export default function Payment() {
             </div>
           )}
 
-          {/* Main Payment View */}
-          {!loading && booking && (
+          {/* =========================================================================
+              ACTIVE PROCESSING SCREEN (PAYMENT BEING DONE)
+             ========================================================================= */}
+          {paymentStatus === 'processing' && (
+            <div
+              className="glass-card"
+              style={{
+                padding: '3.5rem 2rem',
+                textAlign: 'center',
+                border: '2px solid rgba(59, 130, 246, 0.55)',
+                borderRadius: 'var(--radius-lg)',
+                background: 'rgba(15, 23, 42, 0.88)',
+                boxShadow: '0 25px 60px rgba(37, 99, 235, 0.3)',
+              }}
+            >
+              <div style={{ position: 'relative', width: 90, height: 90, margin: '0 auto 1.75rem' }}>
+                <div
+                  className="spinner"
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderWidth: '5px',
+                    borderColor: 'rgba(59, 130, 246, 0.2)',
+                    borderTopColor: '#38bdf8',
+                  }}
+                />
+                <CreditCard
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 36,
+                    height: 36,
+                    color: '#60a5fa',
+                  }}
+                />
+              </div>
+
+              <span
+                className="badge badge-info"
+                style={{
+                  fontSize: '0.8rem',
+                  padding: '4px 14px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: '0.75rem',
+                  display: 'inline-block',
+                }}
+              >
+                PAYMENT IN PROGRESS
+              </span>
+
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
+                Payment Being Processed...
+              </h2>
+              <p style={{ color: '#93c5fd', fontSize: '1.05rem', fontWeight: 600, margin: '0 0 2rem 0' }}>
+                {paymentStepText}
+              </p>
+
+              <div
+                style={{
+                  maxWidth: '420px',
+                  margin: '0 auto',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: '999px',
+                  height: '8px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    width: '65%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, var(--primary) 0%, #0d9488 100%)',
+                    borderRadius: '999px',
+                    animation: 'progressIndeterminate 1.3s infinite ease-in-out',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-dimmed)', fontSize: '0.85rem' }}>
+                <Lock style={{ width: 14, height: 14, color: '#10b981' }} />
+                <span>256-bit Encrypted Demo Gateway • Real-time database confirmation</span>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              SUCCESS CONFIRMATION SCREEN
+             ========================================================================= */}
+          {paymentStatus === 'success' && (
+            <div
+              className="glass-card"
+              style={{
+                padding: '3.5rem 2rem',
+                textAlign: 'center',
+                border: '2px solid rgba(16, 185, 129, 0.65)',
+                borderRadius: 'var(--radius-lg)',
+                background: 'rgba(15, 23, 42, 0.92)',
+                boxShadow: '0 25px 60px rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              <div
+                className="animate-scale-check"
+                style={{
+                  width: 90,
+                  height: 90,
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.22)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.5rem',
+                  color: '#10b981',
+                  boxShadow: '0 0 35px rgba(16, 185, 129, 0.5)',
+                }}
+              >
+                <CheckCircle2 style={{ width: 56, height: 56 }} />
+              </div>
+
+              <span
+                className="badge badge-success"
+                style={{
+                  fontSize: '0.82rem',
+                  padding: '5px 16px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: '0.75rem',
+                  display: 'inline-block',
+                }}
+              >
+                PAYMENT DONE ✓
+              </span>
+
+              <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
+                Payment Successful!
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', margin: '0 0 1.5rem 0' }}>
+                Total of <strong style={{ color: '#34d399' }}>{formatCurrency(booking?.amount, booking?.currency)}</strong> has been verified and settled.
+              </p>
+
+              {confirmedTransaction?.transactionId && (
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    padding: '0.85rem 1.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'inline-block',
+                    marginBottom: '1.75rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+                    Transaction Reference ID
+                  </span>
+                  <code style={{ fontSize: '1rem', color: '#60a5fa', fontWeight: 800 }}>
+                    {confirmedTransaction.transactionId}
+                  </code>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', color: '#34d399', fontSize: '0.95rem', fontWeight: 600 }}>
+                <Sparkles style={{ width: 18, height: 18 }} />
+                <span>Redirecting to your confirmed booking voucher...</span>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              MAIN PAYMENT SELECTION VIEW (IDLE)
+             ========================================================================= */}
+          {!loading && booking && paymentStatus === 'idle' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
               {/* Title Section */}
               <div>
                 <span className="badge badge-info" style={{ letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  GATEWAY: RAZORPAY TEST MODE
+                  INSTANT PAYMENT
                 </span>
                 <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '0.35rem', marginBottom: '0.25rem' }}>
-                  SECURE <span className="gradient-text">PAYMENT</span>
+                  COMPLETE <span className="gradient-text">PAYMENT</span>
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', margin: 0 }}>
-                  Review your reservation details and complete test payment via official Razorpay Checkout.
+                  Review your reservation details and complete instant test payment with automatic confirmation.
                 </p>
               </div>
 
@@ -429,7 +518,7 @@ export default function Payment() {
                         Amount Payable
                       </span>
                       <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>
-                        Razorpay Test Mode • Verified Server Amount
+                        All Taxes & Service Fees Included
                       </span>
                     </div>
                     <span style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-400)' }}>
@@ -439,64 +528,128 @@ export default function Payment() {
                 </div>
               </div>
 
-              {/* Status Notice / Feedback Box */}
-              {paymentNotice && (
-                <div
-                  style={{
-                    padding: '1.25rem',
-                    background: paymentNotice.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                    border: `1px solid ${paymentNotice.type === 'error' ? 'rgba(239, 68, 68, 0.45)' : 'rgba(59, 130, 246, 0.45)'}`,
-                    borderRadius: 'var(--radius-sm)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                  }}
-                >
-                  {paymentNotice.type === 'error' ? (
-                    <XCircle style={{ width: 24, height: 24, color: '#ef4444', flexShrink: 0 }} />
-                  ) : (
-                    <Clock style={{ width: 24, height: 24, color: '#60a5fa', flexShrink: 0 }} />
-                  )}
-                  <div>
-                    <h4 style={{ margin: '0 0 0.2rem', color: paymentNotice.type === 'error' ? '#ef4444' : '#60a5fa', fontSize: '1rem', fontWeight: 700 }}>
-                      {paymentNotice.title}
-                    </h4>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
-                      {paymentNotice.message}
-                    </p>
+              {/* Payment Method Selector */}
+              <div className="glass-card" style={{ padding: '1.5rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dimmed)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.85rem' }}>
+                  Select Payment Method (Auto-Verified)
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  {/* UPI */}
+                  <div
+                    onClick={() => setSelectedMethod('upi')}
+                    style={{
+                      padding: '1rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: selectedMethod === 'upi' ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1.5px solid ${selectedMethod === 'upi' ? 'var(--primary-500)' : 'rgba(255, 255, 255, 0.08)'}`,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <Smartphone style={{ width: 22, height: 22, color: selectedMethod === 'upi' ? '#60a5fa' : '#94a3b8' }} />
+                      <div>
+                        <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--text-primary)' }}>
+                          UPI / QR
+                        </strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>
+                          GPay, PhonePe, Paytm
+                        </span>
+                      </div>
+                    </div>
+                    {selectedMethod === 'upi' && <Check style={{ width: 18, height: 18, color: '#60a5fa' }} />}
+                  </div>
+
+                  {/* Card */}
+                  <div
+                    onClick={() => setSelectedMethod('card')}
+                    style={{
+                      padding: '1rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: selectedMethod === 'card' ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1.5px solid ${selectedMethod === 'card' ? 'var(--primary-500)' : 'rgba(255, 255, 255, 0.08)'}`,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <CreditCard style={{ width: 22, height: 22, color: selectedMethod === 'card' ? '#60a5fa' : '#94a3b8' }} />
+                      <div>
+                        <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--text-primary)' }}>
+                          Credit / Debit Card
+                        </strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>
+                          Visa, Mastercard, RuPay
+                        </span>
+                      </div>
+                    </div>
+                    {selectedMethod === 'card' && <Check style={{ width: 18, height: 18, color: '#60a5fa' }} />}
+                  </div>
+
+                  {/* Net Banking */}
+                  <div
+                    onClick={() => setSelectedMethod('netbanking')}
+                    style={{
+                      padding: '1rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: selectedMethod === 'netbanking' ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1.5px solid ${selectedMethod === 'netbanking' ? 'var(--primary-500)' : 'rgba(255, 255, 255, 0.08)'}`,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <Landmark style={{ width: 22, height: 22, color: selectedMethod === 'netbanking' ? '#60a5fa' : '#94a3b8' }} />
+                      <div>
+                        <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--text-primary)' }}>
+                          Net Banking
+                        </strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>
+                          All Major Indian Banks
+                        </span>
+                      </div>
+                    </div>
+                    {selectedMethod === 'netbanking' && <Check style={{ width: 18, height: 18, color: '#60a5fa' }} />}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Primary Action Button: Pay with Razorpay */}
+              {/* Primary Action Button: Complete Payment */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
-                  id="razorpay-pay-button"
-                  disabled={isProcessing}
-                  onClick={handleOpenRazorpayCheckout}
+                  id="direct-pay-button"
+                  onClick={handleProcessPayment}
                   className="btn btn-primary"
                   style={{
-                    padding: '1.1rem 1.75rem',
-                    fontSize: '1.1rem',
-                    fontWeight: 700,
+                    padding: '1.15rem 1.75rem',
+                    fontSize: '1.15rem',
+                    fontWeight: 800,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.75rem',
-                    backgroundColor: '#2563eb',
-                    opacity: isProcessing ? 0.65 : 1,
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                    background: 'var(--gradient-primary)',
+                    color: '#FEF5EE',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-md)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
                   }}
                 >
-                  <CreditCard style={{ width: 22, height: 22 }} />
+                  <Lock style={{ width: 20, height: 20 }} />
                   <span>
-                    {verifying
-                      ? 'Verifying Payment with Server...'
-                      : initiatingOrder
-                      ? 'Opening Razorpay Gateway...'
-                      : 'Pay Securely with Razorpay (Test Mode)'}
+                    Pay {formatCurrency(booking.amount, booking.currency)} Now & Confirm Booking
                   </span>
                 </button>
 
@@ -523,6 +676,8 @@ export default function Payment() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

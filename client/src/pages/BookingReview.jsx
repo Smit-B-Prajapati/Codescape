@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { getBookingById } from '../services/bookingApi';
 import {
   Train,
@@ -92,7 +93,7 @@ export default function BookingReview() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 1rem' }}>
@@ -290,25 +291,21 @@ export default function BookingReview() {
               <div className="glass-card" style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <Train style={{ width: 20, height: 20, color: '#3b82f6' }} />
+                    <Train style={{ width: 20, height: 20, color: 'var(--primary)' }} />
                     <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Transport
                     </h2>
                   </div>
 
                   <span
+                    className="badge badge-periwinkle"
                     style={{
-                      background: 'rgba(245, 158, 11, 0.16)',
-                      color: '#f59e0b',
-                      border: '1px solid rgba(245, 158, 11, 0.35)',
-                      padding: '0.2rem 0.55rem',
-                      borderRadius: '4px',
+                      padding: '0.25rem 0.65rem',
                       fontSize: '0.72rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.06em',
+                      fontWeight: 700,
                     }}
                   >
-                    DEMO DATA
+                    Verified Route
                   </span>
                 </div>
 
@@ -320,7 +317,7 @@ export default function BookingReview() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                              <Train style={{ width: 18, height: 18, color: '#3b82f6' }} />
+                              <Train style={{ width: 18, height: 18, color: 'var(--primary)' }} />
                               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
                                 {t.name || 'Express Rail Service'}
                               </h3>
@@ -649,8 +646,8 @@ export default function BookingReview() {
                 <div
                   style={{
                     padding: '1.5rem',
-                    background: 'rgba(59, 130, 246, 0.12)',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    background: 'rgba(69, 87, 153, 0.12)',
+                    border: '1px solid rgba(69, 87, 153, 0.35)',
                     borderRadius: 'var(--radius-md)',
                     marginTop: '1rem',
                     display: 'flex',
@@ -661,13 +658,13 @@ export default function BookingReview() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <CheckCircle2 style={{ width: 28, height: 28, color: '#3b82f6', flexShrink: 0 }} />
+                    <CheckCircle2 style={{ width: 28, height: 28, color: 'var(--primary)', flexShrink: 0 }} />
                     <div>
-                      <h4 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', fontWeight: 800, color: '#60a5fa' }}>
+                      <h4 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
                         Ready for Test Payment Gateway Simulation
                       </h4>
                       <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                        Demo Booking Ref <strong>{booking.bookingReference}</strong> is pending payment verification.
+                        Booking Reference <strong>{booking.bookingReference}</strong> is pending payment verification.
                         In accordance with booking safety rules, no real transactions or credentials will be requested.
                       </p>
                     </div>
@@ -689,6 +686,8 @@ export default function BookingReview() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

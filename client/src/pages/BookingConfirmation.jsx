@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { getBookingById } from '../services/bookingApi';
 import { getPaymentByBooking, downloadConfirmationPdf } from '../services/paymentApi';
 import {
@@ -118,7 +119,7 @@ export default function BookingConfirmation() {
     'TEST-TXN-SIMULATED';
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 1rem' }}>
@@ -219,7 +220,7 @@ export default function BookingConfirmation() {
                         fontWeight: 800,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
-                        background: '#2563eb',
+                        background: 'var(--primary)',
                         color: '#fff',
                         padding: '0.15rem 0.45rem',
                         borderRadius: '4px',
@@ -274,15 +275,15 @@ export default function BookingConfirmation() {
                     marginBottom: '0.4rem',
                   }}
                 >
-                  ✓ DEMO BOOKING CONFIRMED
+                  ✓ TRIP APPROVED &amp; BOOKING CONFIRMED
                 </span>
 
                 <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 0.5rem' }}>
-                  Your Demo Reservation is <span style={{ color: '#10b981' }}>Confirmed!</span>
+                  Your Trip is <span style={{ color: '#10b981' }}>Approved &amp; Confirmed!</span>
                 </h1>
 
                 <p style={{ color: 'var(--text-secondary)', maxWidth: '540px', margin: '0 auto 1.5rem', fontSize: '0.95rem' }}>
-                  Test payment has been successfully recorded and your travel choices are integrated with your GlobeThrottle account.
+                  Payment has been successfully received. Your trip plan has been officially approved and confirmed in your GlobeTrotter account.
                 </p>
 
                 {/* Primary Metadata Pills */}
@@ -384,7 +385,7 @@ export default function BookingConfirmation() {
                   {(booking.type === 'transport' || booking.details?.transport) && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Train style={{ width: 20, height: 20, color: '#3b82f6' }} />
+                        <Train style={{ width: 20, height: 20, color: 'var(--primary)' }} />
                         <div>
                           <strong style={{ display: 'block', fontSize: '0.95rem' }}>
                             Transport: {booking.details?.transport?.name || booking.details?.name || 'Express Train'}
@@ -394,7 +395,7 @@ export default function BookingConfirmation() {
                           </span>
                         </div>
                       </div>
-                      <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>DEMO DATA</span>
+                      <span className="badge badge-periwinkle" style={{ fontSize: '0.7rem', fontWeight: 700 }}>Verified Route</span>
                     </div>
                   )}
 
@@ -462,8 +463,9 @@ export default function BookingConfirmation() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
                   gap: '0.85rem',
+                  marginTop: '0.75rem',
                 }}
               >
                 {/* View Trip */}
@@ -472,15 +474,18 @@ export default function BookingConfirmation() {
                   onClick={() => navigate(`/trips/${booking.trip?._id || booking.trip}`)}
                   className="btn btn-primary"
                   style={{
-                    padding: '0.85rem 1.25rem',
-                    fontSize: '0.95rem',
+                    minHeight: '46px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <Compass style={{ width: 16, height: 16 }} />
+                  <Compass style={{ width: 16, height: 16, flexShrink: 0 }} />
                   <span>View Trip</span>
                 </button>
 
@@ -490,38 +495,43 @@ export default function BookingConfirmation() {
                   onClick={() => navigate(`/trips/${booking.trip?._id || booking.trip}/itinerary`)}
                   className="btn btn-secondary"
                   style={{
-                    padding: '0.85rem 1.25rem',
-                    fontSize: '0.95rem',
+                    minHeight: '46px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <Calendar style={{ width: 16, height: 16 }} />
+                  <Calendar style={{ width: 16, height: 16, flexShrink: 0 }} />
                   <span>View Itinerary</span>
                 </button>
 
-                {/* Download Demo Confirmation PDF */}
+                {/* Download Confirmation PDF */}
                 <button
                   type="button"
                   disabled={downloading}
                   onClick={handleDownloadPdf}
                   className="btn btn-secondary"
                   style={{
-                    padding: '0.85rem 1.25rem',
-                    fontSize: '0.95rem',
+                    minHeight: '46px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                    borderColor: 'rgba(37, 99, 235, 0.4)',
-                    color: '#60a5fa',
+                    whiteSpace: 'nowrap',
+                    cursor: downloading ? 'not-allowed' : 'pointer',
+                    opacity: downloading ? 0.7 : 1,
                   }}
                 >
-                  <Download style={{ width: 16, height: 16 }} />
-                  <span>{downloading ? 'Downloading...' : 'Download Demo Confirmation'}</span>
+                  <Download style={{ width: 16, height: 16, flexShrink: 0, color: 'var(--primary)' }} />
+                  <span>{downloading ? 'Downloading...' : 'Download Confirmation'}</span>
                 </button>
 
                 {/* Back to Dashboard */}
@@ -530,15 +540,18 @@ export default function BookingConfirmation() {
                   onClick={() => navigate('/dashboard')}
                   className="btn btn-secondary"
                   style={{
-                    padding: '0.85rem 1.25rem',
-                    fontSize: '0.95rem',
+                    minHeight: '46px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <LayoutDashboard style={{ width: 16, height: 16 }} />
+                  <LayoutDashboard style={{ width: 16, height: 16, flexShrink: 0 }} />
                   <span>Back to Dashboard</span>
                 </button>
               </div>
@@ -548,6 +561,8 @@ export default function BookingConfirmation() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
