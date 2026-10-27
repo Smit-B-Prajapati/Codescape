@@ -10,36 +10,88 @@ import OpenAI from 'openai';
 
 // Global client instance cache
 let openAiClient = null;
+let lastUsedApiKey = null;
+let lastUsedBaseUrl = null;
+let rateLimitCooldownUntil = 0;
 
 /**
  * Helper to get sanitized AI configuration (never leaks credentials)
  */
 export const getAiConfig = () => {
   const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase().trim();
-  const model = process.env.AI_MODEL || (provider === 'openai' ? 'gpt-4o-mini' : 'default');
-  const apiKey = process.env.OPENAI_API_KEY;
-  const isConfigured = Boolean(apiKey && apiKey.trim() && apiKey !== 'your_openai_api_key_here');
+
+  // Support OPENAI_API_KEY, OPEN_API_KEY, and AI_API_KEY, with quote trimming
+  let apiKey = (
+    process.env.OPENAI_API_KEY ||
+    process.env.OPEN_API_KEY ||
+    process.env.open_api_key ||
+    process.env.AI_API_KEY ||
+    ''
+  ).trim();
+
+  // Strip leading and trailing quotes if user pasted them
+  apiKey = apiKey.replace(/^["']|["']$/g, '').trim();
+
+  const isConfigured = Boolean(
+    apiKey &&
+    apiKey.length > 5 &&
+    apiKey !== 'your_openai_api_key_here' &&
+    apiKey !== 'YOUR_API_KEY_HERE'
+  );
+
+  // Auto-detect provider & model from key prefix
+  let defaultModel = 'gpt-4o-mini';
+  let baseURL = process.env.OPENAI_BASE_URL || process.env.AI_BASE_URL || null;
+
+  if (apiKey.startsWith('gsk_')) {
+    baseURL = baseURL || 'https://api.groq.com/openai/v1';
+    defaultModel = 'qwen/qwen3.8-27b';
+  } else if (apiKey.startsWith('sk-or-')) {
+    baseURL = baseURL || 'https://openrouter.ai/api/v1';
+    defaultModel = 'meta-llama/llama-3.1-8b-instruct:free';
+  }
+
+  let model = defaultModel;
+  if (process.env.AI_MODEL) {
+    const envModel = process.env.AI_MODEL.trim();
+    if (apiKey.startsWith('gsk_')) {
+      model = envModel.toLowerCase().includes('120b') ? 'qwen/qwen3.8-27b' : envModel;
+    } else {
+      model = envModel;
+    }
+  }
 
   return {
-    provider,
+    provider: isConfigured ? (apiKey.startsWith('gsk_') ? 'groq' : provider) : 'fallback',
     model,
+    apiKey,
+    baseURL,
     isConfigured,
   };
 };
 
 /**
- * Lazily instantiate and retrieve OpenAI client instance
+ * Lazily instantiate and retrieve OpenAI client instance with auto-refresh
  */
 const getOpenAiClient = () => {
-  const { isConfigured } = getAiConfig();
+  const { isConfigured, apiKey, baseURL } = getAiConfig();
   if (!isConfigured) {
     return null;
   }
 
-  if (!openAiClient) {
-    openAiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+  // Refresh client if key or baseURL changed
+  if (!openAiClient || lastUsedApiKey !== apiKey || lastUsedBaseUrl !== baseURL) {
+    const clientOptions = {
+      apiKey,
+      timeout: 12000, // 12-second per-call timeout prevents hanging the orchestrator
+      maxRetries: 0, // Disable slow SDK backoff retries in real-time user workflows
+    };
+    if (baseURL) {
+      clientOptions.baseURL = baseURL;
+    }
+    openAiClient = new OpenAI(clientOptions);
+    lastUsedApiKey = apiKey;
+    lastUsedBaseUrl = baseURL;
   }
 
   return openAiClient;
@@ -88,30 +140,32 @@ export async function generateStructuredResponse({
   schema = null,
   fallbackData = null,
 }) {
-  const { provider, model, isConfigured } = getAiConfig();
+  const { provider, model, isConfigured, apiKey } = getAiConfig();
 
-  // 1. Check if we should execute in development fallback mode
-  if (!isConfigured || provider === 'fallback') {
+  // 1. Check if we should execute in development fallback mode or active rate limit cooldown
+  if (!isConfigured || provider === 'fallback' || Date.now() < rateLimitCooldownUntil) {
     return {
       provider: 'fallback',
       isFallback: true,
       model: 'fallback-rules-engine',
-      message: 'No active AI API key configured. Operating in development fallback mode.',
+      message: Date.now() < rateLimitCooldownUntil
+        ? 'AI provider temporarily rate limited; using high-speed deterministic engine.'
+        : 'No active AI API key configured. Operating in development fallback mode.',
       data: fallbackData || {
         status: 'fallback_mode_active',
-        note: 'Configure AI_PROVIDER and OPENAI_API_KEY in server/.env to enable live AI responses.',
+        note: 'Operating with deterministic travel intelligence.',
       },
     };
   }
 
-  // 2. Provider: OpenAI
-  if (provider === 'openai') {
+  // 2. Provider: OpenAI / Groq / OpenAI-compatible
+  if (provider === 'openai' || provider === 'groq' || isConfigured) {
     const client = getOpenAiClient();
     if (!client) {
       return {
         provider: 'fallback',
         isFallback: true,
-        message: 'OpenAI client could not be initialized. Operating in fallback mode.',
+        message: 'AI client could not be initialized. Operating in fallback mode.',
         data: fallbackData || {},
       };
     }
@@ -130,12 +184,63 @@ export async function generateStructuredResponse({
       messages.push({ role: 'system', content: systemContent });
       messages.push({ role: 'user', content: userPrompt });
 
-      const completion = await client.chat.completions.create({
-        model,
-        messages,
-        response_format: { type: 'json_object' },
-        temperature: 0.3, // Lower temperature for structured accuracy
-      });
+      // Candidate models for auto-fallback (e.g. Groq qwen/20b/120b)
+      const modelsToTry = [model];
+      if (apiKey && apiKey.startsWith('gsk_')) {
+        ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'].forEach((alt) => {
+          if (!modelsToTry.includes(alt)) modelsToTry.push(alt);
+        });
+      }
+
+      let completion = null;
+      let usedModel = model;
+      let lastAttemptError = null;
+
+      for (const candidateModel of modelsToTry) {
+        try {
+          try {
+            completion = await client.chat.completions.create({
+              model: candidateModel,
+              messages,
+              response_format: { type: 'json_object' },
+              temperature: 0.3,
+            });
+          } catch (paramErr) {
+            const errText = (paramErr?.message || '').toLowerCase();
+            if (
+              errText.includes('response_format') ||
+              errText.includes('unsupported parameter') ||
+              errText.includes('extra fields') ||
+              errText.includes('schema') ||
+              errText.includes('validate json') ||
+              paramErr.status === 400
+            ) {
+              completion = await client.chat.completions.create({
+                model: candidateModel,
+                messages,
+                temperature: 0.3,
+              });
+            } else {
+              throw paramErr;
+            }
+          }
+          if (completion) {
+            usedModel = candidateModel;
+            break;
+          }
+        } catch (candidateErr) {
+          lastAttemptError = candidateErr;
+          console.warn(`[aiService] Model ${candidateModel} failed (${candidateErr.message}), trying next model...`);
+          if (modelsToTry.indexOf(candidateModel) < modelsToTry.length - 1) {
+            continue;
+          }
+          throw candidateErr;
+        }
+      }
+
+      if (!completion) {
+        throw lastAttemptError || new Error('All candidate AI models failed to return a completion');
+      }
 
       const responseContent = completion.choices?.[0]?.message?.content;
 
@@ -146,18 +251,40 @@ export async function generateStructuredResponse({
       let parsedData;
       try {
         parsedData = JSON.parse(responseContent);
-      } catch (parseErr) {
-        throw new Error(`Failed to parse AI output as structured JSON: ${parseErr.message}`);
+      } catch (_) {
+        const cleanJson = responseContent.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+        const start = cleanJson.indexOf('{');
+        const end = cleanJson.lastIndexOf('}');
+        const startArr = cleanJson.indexOf('[');
+        const endArr = cleanJson.lastIndexOf(']');
+
+        if (startArr !== -1 && (start === -1 || startArr < start) && endArr > startArr) {
+          parsedData = JSON.parse(cleanJson.slice(startArr, endArr + 1));
+        } else if (start !== -1 && end !== -1) {
+          parsedData = JSON.parse(cleanJson.slice(start, end + 1));
+        } else {
+          throw new Error('Failed to parse AI output as structured JSON');
+        }
       }
 
       return {
-        provider: 'openai',
-        model,
+        provider: provider || 'openai',
+        model: usedModel,
         isFallback: false,
         data: parsedData,
         usage: completion.usage || null,
       };
     } catch (err) {
+      // If rate limited or quota exceeded across all models, trigger temporary 10-second cooldown
+      if (
+        err.status === 429 ||
+        err.statusCode === 429 ||
+        (err.message && err.message.toLowerCase().includes('rate limit')) ||
+        (err.message && err.message.toLowerCase().includes('quota'))
+      ) {
+        rateLimitCooldownUntil = Date.now() + 10000;
+      }
+
       const sanitized = sanitizeErrorMessage(err);
       console.error('[aiService Error]:', sanitized);
 

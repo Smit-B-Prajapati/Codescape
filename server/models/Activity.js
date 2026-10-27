@@ -67,6 +67,29 @@ const activitySchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Cost cannot be negative'],
     },
+    currency: {
+      type: String,
+      default: 'INR',
+      trim: true,
+    },
+    pricingType: {
+      type: String,
+      enum: ['free', 'entry_fee', 'verified', 'estimated', 'optional'],
+      default: 'estimated',
+    },
+    pricePerPerson: {
+      type: Boolean,
+      default: true,
+    },
+    source: {
+      type: String,
+      default: 'local_catalog',
+      trim: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
     image: {
       type: String,
       default: '',
