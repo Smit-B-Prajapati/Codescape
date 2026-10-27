@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPublicTripBySlugApi, copyPublicTripApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import {
   Globe,
   Calendar,
@@ -99,7 +100,7 @@ export default function PublicTripView() {
   const defaultCover = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80';
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
@@ -107,18 +108,45 @@ export default function PublicTripView() {
 
           {/* Copy Link Feedback Banner */}
           {linkCopied && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <div
+              style={{
+                background: 'rgba(13, 148, 136, 0.12)',
+                border: '1px solid rgba(13, 148, 136, 0.3)',
+                color: '#0d9488',
+                padding: '0.85rem 1.15rem',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
               <CheckCircle2 style={{ width: 18, height: 18 }} />
               <span>Public itinerary share link copied to clipboard!</span>
             </div>
           )}
 
           {error && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', padding: '2rem', borderRadius: 'var(--radius-md)', textAlign: 'center', margin: '3rem 0' }}>
-              <AlertCircle style={{ width: 40, height: 40, margin: '0 auto 0.75rem auto', color: '#ef4444' }} />
-              <h3 style={{ fontSize: '1.3rem', color: '#ffffff', marginBottom: '0.35rem' }}>Itinerary Not Accessible</h3>
-              <p style={{ fontSize: '0.9rem', color: '#fca5a5', marginBottom: '1.25rem' }}>{error}</p>
-              <Link to="/" className="btn btn-primary" style={{ padding: '0.55rem 1.1rem' }}>
+            <div
+              style={{
+                background: 'rgba(225, 29, 72, 0.12)',
+                border: '1px solid rgba(225, 29, 72, 0.3)',
+                color: '#e11d48',
+                padding: '2.5rem',
+                borderRadius: 'var(--radius-lg)',
+                textAlign: 'center',
+                margin: '3rem auto',
+                maxWidth: '600px',
+              }}
+            >
+              <AlertCircle style={{ width: 44, height: 44, margin: '0 auto 0.85rem auto', color: '#e11d48' }} />
+              <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.35rem', fontWeight: 700 }}>
+                Itinerary Not Accessible
+              </h3>
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{error}</p>
+              <Link to="/" className="btn btn-primary" style={{ padding: '0.65rem 1.35rem' }}>
                 Explore GlobeTrotter
               </Link>
             </div>
@@ -126,20 +154,50 @@ export default function PublicTripView() {
 
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
-              <p style={{ fontFamily: 'var(--font-heading)' }}>Loading shared itinerary...</p>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: 'rgba(69, 87, 153, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.25rem auto',
+                }}
+              >
+                <Compass className="pulse-glow" style={{ width: 28, height: 28, color: 'var(--primary)' }} />
+              </div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 600 }}>Loading shared itinerary...</p>
             </div>
           ) : data?.trip ? (
             <div>
 
               {/* Read-Only Public Banner Header */}
-              <div className="glass-card" style={{ height: '320px', width: '100%', position: 'relative', overflow: 'hidden', marginBottom: '2rem' }}>
+              <div
+                className="glass-card"
+                style={{
+                  height: '340px',
+                  width: '100%',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  marginBottom: '2.5rem',
+                  borderRadius: 'var(--radius-lg)',
+                }}
+              >
                 <img
                   src={data.trip.coverPhoto || defaultCover}
                   alt={data.trip.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 15, 25, 0.95) 0%, rgba(11, 15, 25, 0.3) 60%, transparent 100%)' }} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(to top, rgba(16, 24, 47, 0.95) 0%, rgba(16, 24, 47, 0.4) 60%, transparent 100%)',
+                  }}
+                />
 
                 <div style={{ position: 'absolute', bottom: '2rem', left: '2rem', right: '2rem' }} className="flex flex-col flex-md-row justify-between items-start items-md-end gap-4">
                   <div>
@@ -171,7 +229,7 @@ export default function PublicTripView() {
                       onClick={handleCopyTripToAccount}
                       disabled={copying}
                       className="btn btn-primary"
-                      style={{ padding: '0.65rem 1.25rem', background: '#2563eb' }}
+                      style={{ padding: '0.65rem 1.25rem' }}
                     >
                       <Copy style={{ width: 16, height: 16 }} />
                       <span>{copying ? 'Copying Trip...' : 'Copy Trip to My Account'}</span>
@@ -271,6 +329,8 @@ export default function PublicTripView() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

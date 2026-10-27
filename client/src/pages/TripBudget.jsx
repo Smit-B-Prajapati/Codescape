@@ -8,6 +8,7 @@ import {
   updateBudgetLimitApi,
 } from '../services/api';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import BudgetChart from '../components/BudgetChart';
 import ExpenseModal from '../components/ExpenseModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -155,23 +156,23 @@ export default function TripBudget() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
         <div className="container">
 
           {/* Navigation & Header */}
-          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2rem' }}>
+          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2.25rem' }}>
             <div>
-              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem', marginBottom: '0.85rem' }}>
                 <ArrowLeft style={{ width: 16, height: 16 }} />
                 <span>Back to Trip Overview</span>
               </Link>
-              <h1 style={{ fontSize: '2.4rem', fontWeight: 800 }}>
+              <h1 className="editorial-display" style={{ fontSize: '2.4rem', fontWeight: 800 }}>
                 {data?.trip?.name || 'Trip Budget'} — Expense Analytics
               </h1>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '1.02rem' }}>
                 Track financial costs, category breakdown, daily averages, and set budget limits.
               </p>
             </div>
@@ -222,7 +223,7 @@ export default function TripBudget() {
           {/* Loading Indicator */}
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
+              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
               <p style={{ fontFamily: 'var(--font-heading)' }}>Calculating budget analytics...</p>
             </div>
           ) : data ? (
@@ -232,8 +233,8 @@ export default function TripBudget() {
                 
                 {/* 1. Total Trip Cost */}
                 <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                  <div style={{ background: 'rgba(59, 130, 246, 0.15)', width: 52, height: 52, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <DollarSign style={{ width: 26, height: 26, color: '#60a5fa' }} />
+                  <div style={{ background: 'rgba(69, 87, 153, 0.15)', width: 52, height: 52, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <DollarSign style={{ width: 26, height: 26, color: 'var(--primary)' }} />
                   </div>
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Estimated Cost</span>
@@ -495,6 +496,8 @@ export default function TripBudget() {
         onConfirm={handleDeleteExpenseConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <Footer />
     </div>
   );
 }

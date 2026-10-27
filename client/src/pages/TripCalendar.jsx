@@ -7,6 +7,7 @@ import {
   deleteActivityApi,
 } from '../services/api';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import CalendarGrid from '../components/CalendarGrid';
 import ActivityModal from '../components/ActivityModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -172,23 +173,23 @@ export default function TripCalendar() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
         <div className="container">
 
           {/* Navigation & Header */}
-          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2rem' }}>
+          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2.25rem' }}>
             <div>
-              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem', marginBottom: '0.85rem' }}>
                 <ArrowLeft style={{ width: 16, height: 16 }} />
                 <span>Back to Trip Overview</span>
               </Link>
-              <h1 style={{ fontSize: '2.4rem', fontWeight: 800 }}>
+              <h1 className="editorial-display" style={{ fontSize: '2.4rem', fontWeight: 800 }}>
                 {itinerary?.trip?.name || 'Trip Calendar'} — Visual Timeline
               </h1>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '1.02rem' }}>
                 Calendar view & chronological vertical timeline stream
               </p>
             </div>
@@ -224,7 +225,7 @@ export default function TripCalendar() {
           {/* Loading Indicator */}
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
+              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
               <p style={{ fontFamily: 'var(--font-heading)' }}>Loading visual calendar...</p>
             </div>
           ) : itinerary ? (
@@ -284,14 +285,14 @@ export default function TripCalendar() {
 
                   {/* Chronological Vertical Timeline Stream */}
                   <div style={{ flex: 1, position: 'relative', paddingLeft: '1.75rem' }}>
-                    <div style={{ position: 'absolute', left: '8px', top: '4px', bottom: '4px', width: '2px', backgroundColor: '#2563eb' }} />
+                    <div style={{ position: 'absolute', left: '8px', top: '4px', bottom: '4px', width: '2px', backgroundColor: 'var(--primary)' }} />
 
                     {selectedDayObj?.activities && selectedDayObj.activities.length > 0 ? (
                       <div className="flex flex-col gap-4">
                         {selectedDayObj.activities.map((act) => (
                           <div key={act._id} style={{ position: 'relative' }}>
                             {/* Timeline Point Dot */}
-                            <div style={{ position: 'absolute', left: '-1.75rem', top: '14px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#60a5fa', border: '2px solid #0b0f19', transform: 'translateX(-50%)' }} />
+                            <div style={{ position: 'absolute', left: '-1.75rem', top: '14px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--accent-lavender)', border: '2px solid var(--bg-card)', transform: 'translateX(-50%)' }} />
 
                             <div className="glass-card" style={{ padding: '0.9rem 1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
                               <div className="flex justify-between items-start">
@@ -381,6 +382,8 @@ export default function TripCalendar() {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <Footer />
     </div>
   );
 }

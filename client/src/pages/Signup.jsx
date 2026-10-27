@@ -54,45 +54,120 @@ export default function Signup() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
-      <div style={{ width: '100%', maxWidth: '960px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-        
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2.5rem 1rem',
+        backgroundColor: 'var(--bg-canvas)',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '960px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '2rem',
+        }}
+      >
         {/* Left Side: Travel Branding Card */}
-        <div className="glass-card flex flex-col justify-between" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.4) 0%, rgba(17, 24, 39, 0.8) 100%)' }}>
+        <div
+          className="glass-card flex flex-col justify-between"
+          style={{
+            padding: '2.75rem',
+            background: 'linear-gradient(135deg, rgba(69, 87, 153, 0.92) 0%, rgba(16, 24, 47, 0.96) 100%)',
+            color: '#FEF5EE',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 20px 40px -10px rgba(16, 24, 47, 0.5)',
+          }}
+        >
           <div>
             <div className="flex items-center gap-2" style={{ marginBottom: '2rem' }}>
-              <Globe className="pulse-glow" style={{ color: '#0d9488', width: 32, height: 32 }} />
-              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: '1.6rem' }}>
-                Globe<span className="gradient-text">Trotter</span>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Globe style={{ color: '#FFE0B9', width: 22, height: 22 }} />
+              </div>
+              <span
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 800,
+                  fontSize: '1.6rem',
+                  letterSpacing: '-0.02em',
+                  color: '#FEF5EE',
+                }}
+              >
+                Globe<span style={{ color: '#FFE0B9' }}>Trotter</span>
               </span>
             </div>
-            <div className="badge badge-success" style={{ marginBottom: '1.5rem' }}>
+
+            <div
+              className="badge"
+              style={{
+                marginBottom: '1.5rem',
+                background: 'rgba(255, 224, 185, 0.2)',
+                color: '#FFE0B9',
+                border: '1px solid rgba(255, 224, 185, 0.35)',
+              }}
+            >
               <Compass style={{ width: 14, height: 14 }} /> Start Your Adventure
             </div>
-            <h2 style={{ fontSize: '2.2rem', marginBottom: '1rem', lineHeight: '1.2' }}>
-              Join the world of <br /><span className="gradient-text">smart travelers.</span>
+
+            <h2
+              className="editorial-display"
+              style={{ fontSize: '2.4rem', marginBottom: '1rem', lineHeight: '1.15', color: '#FEF5EE' }}
+            >
+              Join the world of <br />
+              <span style={{ color: '#FFE0B9', fontStyle: 'italic' }}>smart travelers.</span>
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.6' }}>
+
+            <p style={{ color: 'rgba(254, 245, 238, 0.85)', fontSize: '0.98rem', lineHeight: '1.65' }}>
               Create your free account today to build multi-stop trip plans, schedule day-wise activities, track expenses, and copy shared community itineraries.
             </p>
           </div>
 
-          <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-dimmed)' }}>
+          <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.15)' }}>
+            <p style={{ fontSize: '0.88rem', color: 'rgba(254, 245, 238, 0.7)', fontStyle: 'italic', margin: 0 }}>
               "The journey of a thousand miles begins with a single step."
             </p>
           </div>
         </div>
 
         {/* Right Side: Form Card */}
-        <div className="glass-card" style={{ padding: '2.5rem' }}>
+        <div className="glass-card" style={{ padding: '2.75rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>Create Account</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Fill in your information to register</p>
+            <h3 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '0.35rem' }}>Create Account</h3>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+              Fill in your information to start planning
+            </p>
           </div>
 
           {localError && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}>
+            <div
+              style={{
+                background: 'rgba(225, 29, 72, 0.12)',
+                border: '1px solid rgba(225, 29, 72, 0.3)',
+                color: '#e11d48',
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                fontSize: '0.9rem',
+              }}
+            >
               <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} />
               <span>{localError}</span>
             </div>
@@ -100,70 +175,123 @@ export default function Signup() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Full Name</label>
+              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Full Name
+              </label>
               <div style={{ position: 'relative' }}>
-                <User style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--text-dimmed)' }} />
+                <User
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 18,
+                    height: 18,
+                    color: 'var(--text-dimmed)',
+                  }}
+                />
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem' }}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Email Address</label>
+              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Email Address
+              </label>
               <div style={{ position: 'relative' }}>
-                <Mail style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--text-dimmed)' }} />
+                <Mail
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 18,
+                    height: 18,
+                    color: 'var(--text-dimmed)',
+                  }}
+                />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem' }}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Password</label>
+              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Password
+              </label>
               <div style={{ position: 'relative' }}>
-                <Lock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--text-dimmed)' }} />
+                <Lock
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 18,
+                    height: 18,
+                    color: 'var(--text-dimmed)',
+                  }}
+                />
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Minimum 6 characters"
-                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem' }}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Confirm Password</label>
+              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Confirm Password
+              </label>
               <div style={{ position: 'relative' }}>
-                <Lock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--text-dimmed)' }} />
+                <Lock
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 18,
+                    height: 18,
+                    color: 'var(--text-dimmed)',
+                  }}
+                />
                 <input
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Re-enter password"
-                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.6rem' }}
                   required
                 />
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '0.75rem', width: '100%', padding: '0.85rem' }} disabled={submitting}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ marginTop: '0.75rem', width: '100%', padding: '0.88rem', fontWeight: 700 }}
+              disabled={submitting}
+            >
               {submitting ? (
                 <span>Creating Account...</span>
               ) : (
@@ -175,9 +303,11 @@ export default function Signup() {
             </button>
           </form>
 
-          <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+          <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: '#60a5fa', fontWeight: 600 }}>Sign in</Link>
+            <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+              Sign in
+            </Link>
           </div>
         </div>
 

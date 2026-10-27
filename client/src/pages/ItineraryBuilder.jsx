@@ -7,6 +7,7 @@ import {
   deleteActivityApi,
 } from '../services/api';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import ActivityModal from '../components/ActivityModal';
 import ConfirmModal from '../components/ConfirmModal';
 import {
@@ -136,41 +137,61 @@ export default function ItineraryBuilder() {
     return `${mins} mins`;
   };
 
+  const formatCurrency = (val, curr = 'USD') => {
+    const num = Math.round(Number(val) || 0);
+    const c = (curr || 'USD').toUpperCase();
+    if (c === 'INR') {
+      return `₹${num.toLocaleString('en-IN')}`;
+    }
+    if (c === 'USD') {
+      return `$${num.toLocaleString('en-US')}`;
+    }
+    if (c === 'EUR') {
+      return `€${num.toLocaleString('de-DE')}`;
+    }
+    if (c === 'GBP') {
+      return `£${num.toLocaleString('en-GB')}`;
+    }
+    return `${c} ${num.toLocaleString()}`;
+  };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
         <div className="container">
 
           {/* Navigation & Header */}
-          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2rem' }}>
+          <div className="flex flex-col flex-md-row justify-between items-start items-md-center gap-4" style={{ marginBottom: '2.25rem' }}>
             <div>
-              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              <Link to={`/trips/${id}`} className="btn btn-secondary" style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem', marginBottom: '0.85rem' }}>
                 <ArrowLeft style={{ width: 16, height: 16 }} />
                 <span>Back to Trip Overview</span>
               </Link>
-              <h1 style={{ fontSize: '2.4rem', fontWeight: 800 }}>
+              <h1 className="editorial-display" style={{ fontSize: '2.4rem', fontWeight: 800 }}>
                 {itinerary?.trip?.name || 'Itinerary Builder'}
               </h1>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '1.02rem' }}>
                 Day-by-day activity timeline & multi-city schedule planning
               </p>
             </div>
 
             {/* View Switcher Tabs & Add Activity CTA */}
-            <div className="flex items-center gap-3">
-              <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)', display: 'flex', gap: '0.25rem' }}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div style={{ background: 'var(--surface-warm)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)', display: 'flex', gap: '0.25rem' }}>
                 <button
+                  type="button"
                   onClick={() => setActiveView('list')}
                   className="btn"
                   style={{
-                    padding: '0.45rem 0.85rem',
+                    padding: '0.45rem 0.95rem',
                     fontSize: '0.85rem',
-                    borderRadius: 'var(--radius-sm)',
-                    background: activeView === 'list' ? '#2563eb' : 'transparent',
-                    color: activeView === 'list' ? '#ffffff' : 'var(--text-secondary)',
+                    borderRadius: 'var(--radius-xs)',
+                    background: activeView === 'list' ? 'var(--primary)' : 'transparent',
+                    color: activeView === 'list' ? '#FEF5EE' : 'var(--text-secondary)',
                     border: 'none',
+                    fontWeight: activeView === 'list' ? 700 : 500,
                   }}
                 >
                   <List style={{ width: 14, height: 14 }} />
@@ -178,15 +199,17 @@ export default function ItineraryBuilder() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setActiveView('timeline')}
                   className="btn"
                   style={{
-                    padding: '0.45rem 0.85rem',
+                    padding: '0.45rem 0.95rem',
                     fontSize: '0.85rem',
-                    borderRadius: 'var(--radius-sm)',
-                    background: activeView === 'timeline' ? '#2563eb' : 'transparent',
-                    color: activeView === 'timeline' ? '#ffffff' : 'var(--text-secondary)',
+                    borderRadius: 'var(--radius-xs)',
+                    background: activeView === 'timeline' ? 'var(--primary)' : 'transparent',
+                    color: activeView === 'timeline' ? '#FEF5EE' : 'var(--text-secondary)',
                     border: 'none',
+                    fontWeight: activeView === 'timeline' ? 700 : 500,
                   }}
                 >
                   <Clock style={{ width: 14, height: 14 }} />
@@ -195,12 +218,13 @@ export default function ItineraryBuilder() {
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setEditingActivity(null);
                   setIsActivityModalOpen(true);
                 }}
                 className="btn btn-primary"
-                style={{ padding: '0.65rem 1.1rem' }}
+                style={{ padding: '0.65rem 1.25rem', fontWeight: 700 }}
               >
                 <Plus style={{ width: 16, height: 16 }} />
                 <span>Add Activity</span>
@@ -226,7 +250,7 @@ export default function ItineraryBuilder() {
           {/* Loading Indicator */}
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
+              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
               <p style={{ fontFamily: 'var(--font-heading)' }}>Generating day-by-day itinerary...</p>
             </div>
           ) : itinerary ? (
@@ -265,7 +289,7 @@ export default function ItineraryBuilder() {
                             </span>
                             {day.totalCost > 0 && (
                               <span className="badge badge-success">
-                                Est. ${day.totalCost}
+                                Est. {formatCurrency(day.totalCost, itinerary.trip?.currency || 'USD')}
                               </span>
                             )}
                           </div>
@@ -298,7 +322,7 @@ export default function ItineraryBuilder() {
 
                                     <div className="flex items-center gap-4" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
                                       <span>Duration: {formatDuration(act.duration)}</span>
-                                      <span>Cost: ${act.cost || 0}</span>
+                                      <span>Cost: {formatCurrency(act.cost || 0, itinerary.trip?.currency || 'USD')}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -350,15 +374,15 @@ export default function ItineraryBuilder() {
 
                   <div style={{ position: 'relative', paddingLeft: '2rem' }}>
                     {/* Continuous Vertical Timeline Line */}
-                    <div style={{ position: 'absolute', left: '11px', top: '8px', bottom: '8px', width: '2px', backgroundColor: 'var(--primary-500)' }} />
+                    <div style={{ position: 'absolute', left: '11px', top: '8px', bottom: '8px', width: '2px', backgroundColor: 'var(--primary)' }} />
 
                     {itinerary.days?.flatMap((d) => d.activities).length > 0 ? (
                       itinerary.days.map((day) =>
                         day.activities && day.activities.length > 0 ? (
                           <div key={`tl_day_${day.dayNumber}`} style={{ marginBottom: '2rem' }}>
                             <div className="flex items-center gap-2" style={{ marginBottom: '1rem' }}>
-                              <div style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: '#2563eb', border: '3px solid #0b0f19', position: 'absolute', left: '0px', transform: 'translateX(-50%)' }} />
-                              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#60a5fa' }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: 'var(--primary)', border: '3px solid var(--bg-card)', position: 'absolute', left: '0px', transform: 'translateX(-50%)' }} />
+                              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>
                                 Day {day.dayNumber} — {formatDateHeader(day.date)} {day.stop && `(${day.stop.city})`}
                               </span>
                             </div>
@@ -374,7 +398,9 @@ export default function ItineraryBuilder() {
                                       </div>
                                       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{act.description}</p>
                                     </div>
-                                    <span className="badge badge-success">${act.cost || 0}</span>
+                                    <span className="badge badge-success">
+                                      {formatCurrency(act.cost || 0, itinerary.trip?.currency || 'USD')}
+                                    </span>
                                   </div>
                                 </div>
                               ))}
@@ -421,6 +447,8 @@ export default function ItineraryBuilder() {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <Footer />
     </div>
   );
 }

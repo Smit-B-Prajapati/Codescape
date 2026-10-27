@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProfileApi, updateProfileApi, deleteAccountApi, toggleSavedDestinationApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import ConfirmModal from '../components/ConfirmModal';
 import {
   User,
@@ -140,16 +141,18 @@ export default function ProfileSettings() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
-        <div className="container" style={{ maxWidth: '800px' }}>
+        <div className="container" style={{ maxWidth: '820px' }}>
 
           {/* Page Title Header */}
-          <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '2.4rem', fontWeight: 800 }}>Account & Profile Settings</h1>
-            <p style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+          <div style={{ marginBottom: '2.25rem' }}>
+            <h1 className="editorial-display" style={{ fontSize: '2.4rem', fontWeight: 800 }}>
+              Account & Profile Settings
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '1.02rem' }}>
               Manage your personal identity, language preferences, saved destinations, and privacy controls
             </p>
           </div>
@@ -171,7 +174,7 @@ export default function ProfileSettings() {
 
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
+              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
               <p style={{ fontFamily: 'var(--font-heading)' }}>Loading profile preferences...</p>
             </div>
           ) : (
@@ -180,13 +183,13 @@ export default function ProfileSettings() {
               {/* 1. PROFILE SECTION */}
               <section className="glass-card" style={{ padding: '2rem' }}>
                 <div className="flex items-center gap-2" style={{ marginBottom: '1.5rem', paddingBottom: '0.85rem', borderBottom: '1px solid var(--border-glass)' }}>
-                  <User style={{ width: 22, height: 22, color: '#3b82f6' }} />
+                  <User style={{ width: 22, height: 22, color: 'var(--primary)' }} />
                   <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Profile Details</h3>
                 </div>
 
                 {/* Avatar Preview */}
                 <div className="flex items-center gap-4" style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ position: 'relative', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: '3px solid #2563eb', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
                     <img
                       src={profile.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
                       alt={profile.name}
@@ -251,7 +254,7 @@ export default function ProfileSettings() {
                     style={{ width: '100%', maxWidth: '300px', padding: '0.75rem 0.9rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
                   >
                     {LANGUAGES.map((lang) => (
-                      <option key={lang} value={lang} style={{ backgroundColor: '#111827', color: '#ffffff' }}>{lang}</option>
+                      <option key={lang} value={lang} style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>{lang}</option>
                     ))}
                   </select>
                 </div>
@@ -367,14 +370,14 @@ export default function ProfileSettings() {
 
       {/* Delete Account Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(6px)', padding: '1rem' }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: '480px', padding: '2rem', background: '#111827', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.5)' }}>
+        <div className="modal-backdrop">
+          <div className="modal-dialog" style={{ maxWidth: '480px', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
             <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ef4444', marginBottom: '0.75rem' }}>
               Confirm Account Deletion
             </h3>
 
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              To confirm permanent deletion, please type your email address <strong style={{ color: '#ffffff' }}>{profile.email}</strong> below:
+              To confirm permanent deletion, please type your email address <strong style={{ color: 'var(--text-primary)' }}>{profile.email}</strong> below:
             </p>
 
             <input
@@ -382,7 +385,7 @@ export default function ProfileSettings() {
               value={confirmEmailInput}
               onChange={(e) => setConfirmEmailInput(e.target.value)}
               placeholder="Type your email to confirm..."
-              style={{ width: '100%', padding: '0.75rem 0.9rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none', marginBottom: '1.5rem' }}
+              style={{ width: '100%', padding: '0.75rem 0.9rem', backgroundColor: 'var(--surface-warm)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none', marginBottom: '1.5rem' }}
             />
 
             <div className="flex justify-end gap-3">
@@ -407,6 +410,8 @@ export default function ProfileSettings() {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }

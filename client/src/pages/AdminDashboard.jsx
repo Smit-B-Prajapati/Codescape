@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAdminAnalyticsApi, updateUserRoleApi } from '../services/api';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import {
   Shield,
   Users,
@@ -71,20 +72,30 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-canvas)' }}>
       <Navbar />
 
       <main style={{ flex: 1, padding: '2.5rem 0' }}>
         <div className="container">
 
           {/* Header Banner */}
-          <div className="flex items-center gap-3" style={{ marginBottom: '2rem' }}>
-            <div style={{ background: 'rgba(37, 99, 235, 0.2)', padding: '0.65rem', borderRadius: '12px', color: '#60a5fa' }}>
-              <Shield style={{ width: 28, height: 28 }} />
+          <div className="flex items-center gap-3" style={{ marginBottom: '2.25rem' }}>
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(69, 87, 153, 0.2) 0%, rgba(16, 24, 47, 0.1) 100%)',
+                padding: '0.75rem',
+                borderRadius: '12px',
+                color: 'var(--primary)',
+                border: '1px solid rgba(69, 87, 153, 0.25)',
+              }}
+            >
+              <Shield style={{ width: 30, height: 30 }} />
             </div>
             <div>
-              <h1 style={{ fontSize: '2.4rem', fontWeight: 800 }}>Admin System Control Center</h1>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+              <h1 className="editorial-display" style={{ fontSize: '2.4rem', fontWeight: 800 }}>
+                Admin System Control Center
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.2rem', fontSize: '1.02rem' }}>
                 Platform metrics, destination aggregations, engagement trends, and user roster
               </p>
             </div>
@@ -92,14 +103,40 @@ export default function AdminDashboard() {
 
           {/* Feedback Toast */}
           {feedback && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <div
+              style={{
+                background: 'rgba(13, 148, 136, 0.12)',
+                border: '1px solid rgba(13, 148, 136, 0.3)',
+                color: '#0d9488',
+                padding: '0.85rem 1.15rem',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
               <CheckCircle2 style={{ width: 18, height: 18 }} />
               <span>{feedback}</span>
             </div>
           )}
 
           {error && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div
+              style={{
+                background: 'rgba(225, 29, 72, 0.12)',
+                border: '1px solid rgba(225, 29, 72, 0.3)',
+                color: '#e11d48',
+                padding: '1.25rem',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
               <AlertCircle style={{ width: 20, height: 20 }} />
               <span>{error}</span>
             </div>
@@ -107,8 +144,21 @@ export default function AdminDashboard() {
 
           {loading ? (
             <div style={{ padding: '5rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Compass className="pulse-glow" style={{ width: 44, height: 44, color: '#3b82f6', margin: '0 auto 1rem auto' }} />
-              <p style={{ fontFamily: 'var(--font-heading)' }}>Loading system analytics...</p>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: 'rgba(69, 87, 153, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.25rem auto',
+                }}
+              >
+                <Compass className="pulse-glow" style={{ width: 28, height: 28, color: 'var(--primary)' }} />
+              </div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 600 }}>Loading system analytics...</p>
             </div>
           ) : data ? (
             <div>
@@ -118,12 +168,12 @@ export default function AdminDashboard() {
                 
                 {/* Total Users */}
                 <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                  <div style={{ background: 'rgba(59, 130, 246, 0.15)', width: 50, height: 50, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Users style={{ width: 24, height: 24, color: '#60a5fa' }} />
+                  <div style={{ background: 'rgba(69, 87, 153, 0.15)', width: 50, height: 50, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(69, 87, 153, 0.25)' }}>
+                    <Users style={{ width: 24, height: 24, color: 'var(--primary)' }} />
                   </div>
                   <div>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Users</span>
-                    <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '0.1rem' }}>{data.stats?.totalUsers || 0}</h3>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Total Users</span>
+                    <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '0.1rem', margin: 0 }}>{data.stats?.totalUsers || 0}</h3>
                   </div>
                 </div>
 
@@ -176,10 +226,10 @@ export default function AdminDashboard() {
                       {data.popularCities.map((item, idx) => (
                         <div key={idx} className="flex justify-between items-center" style={{ padding: '0.65rem 0.85rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
                           <div className="flex items-center gap-2">
-                            <MapPin style={{ width: 14, height: 14, color: '#60a5fa' }} />
+                            <MapPin style={{ width: 14, height: 14, color: 'var(--primary)' }} />
                             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.city}, {item.country}</span>
                           </div>
-                          <span className="badge badge-info">{item.count} Stops</span>
+                          <span className="badge badge-periwinkle">{item.count} Stops</span>
                         </div>
                       ))}
                     </div>
@@ -200,7 +250,7 @@ export default function AdminDashboard() {
                         <div key={idx} className="flex justify-between items-center" style={{ padding: '0.65rem 0.85rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cat.category}</span>
                           <div className="flex items-center gap-2">
-                            <span className="badge badge-success">{cat.count} Events</span>
+                            <span className="badge badge-peach">{cat.count} Events</span>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(${cat.totalCost})</span>
                           </div>
                         </div>
@@ -238,7 +288,7 @@ export default function AdminDashboard() {
                           <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{u.name}</td>
                           <td style={{ padding: '0.85rem 1rem', color: 'var(--text-secondary)' }}>{u.email}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>
-                            <span className={`badge ${u.role === 'admin' ? 'badge-success' : 'badge-info'}`}>
+                            <span className={`badge ${u.role === 'admin' ? 'badge-rose' : 'badge-periwinkle'}`}>
                               {u.role.toUpperCase()}
                             </span>
                           </td>
@@ -266,6 +316,8 @@ export default function AdminDashboard() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
