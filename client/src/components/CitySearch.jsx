@@ -93,7 +93,7 @@ export default function CitySearch({ onSelectCity, tripDates }) {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-secondary)' }}>
-          <Compass className="pulse-glow" style={{ width: 28, height: 28, color: '#3b82f6', margin: '0 auto 0.5rem auto' }} />
+          <Compass className="pulse-glow" style={{ width: 28, height: 28, color: 'var(--primary)', margin: '0 auto 0.5rem auto' }} />
           <p style={{ fontSize: '0.85rem' }}>Searching city database...</p>
         </div>
       ) : cities.length > 0 ? (

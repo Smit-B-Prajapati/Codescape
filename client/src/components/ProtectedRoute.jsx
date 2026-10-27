@@ -9,8 +9,8 @@ export default function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-dark)' }}>
-        <Compass className="pulse-glow" style={{ width: 48, height: 48, color: '#3b82f6', marginBottom: '1rem' }} />
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-canvas)' }}>
+        <Compass className="pulse-glow" style={{ width: 48, height: 48, color: 'var(--primary)', marginBottom: '1rem' }} />
         <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-heading)' }}>Verifying credentials...</p>
       </div>
     );

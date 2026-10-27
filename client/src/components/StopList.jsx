@@ -88,7 +88,7 @@ export default function StopList({ stops = [], onReorder, onEditStop, onDeleteSt
             >
               {/* Left: Sequential Order Badge & Stop Info */}
               <div className="flex items-center gap-3">
-                <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', color: '#ffffff', flexShrink: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', color: '#ffffff', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
                   {index + 1}
                 </div>
 

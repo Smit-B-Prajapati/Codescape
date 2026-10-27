@@ -88,7 +88,7 @@ export default function ActivitySearch({ selectedStopCity, onAddActivityClick })
               padding: '0.3rem 0.75rem',
               fontSize: '0.78rem',
               borderRadius: 'var(--radius-full)',
-              background: category === cat ? '#2563eb' : 'rgba(255, 255, 255, 0.06)',
+              background: category === cat ? 'var(--primary)' : 'var(--surface-warm)',
               color: category === cat ? '#ffffff' : 'var(--text-secondary)',
               border: '1px solid var(--border-glass)',
               whiteSpace: 'nowrap',
@@ -115,7 +115,7 @@ export default function ActivitySearch({ selectedStopCity, onAddActivityClick })
       {/* Loading State */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2.5rem 0', color: 'var(--text-secondary)' }}>
-          <Compass className="pulse-glow" style={{ width: 32, height: 32, color: '#3b82f6', margin: '0 auto 0.75rem auto' }} />
+          <Compass className="pulse-glow" style={{ width: 32, height: 32, color: 'var(--primary)', margin: '0 auto 0.75rem auto' }} />
           <p style={{ fontSize: '0.85rem' }}>Discovering activities...</p>
         </div>
       ) : activities.length > 0 ? (

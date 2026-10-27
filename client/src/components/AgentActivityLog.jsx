@@ -73,9 +73,9 @@ export default function AgentActivityLog({
         return {
           icon: <RefreshCw className="spin-icon" style={{ width: 14, height: 14 }} />,
           className: 'step-running',
-          color: '#3b82f6',
-          bg: 'rgba(59, 130, 246, 0.18)',
-          border: 'rgba(59, 130, 246, 0.4)',
+          color: 'var(--primary)',
+          bg: 'rgba(69, 87, 153, 0.18)',
+          border: 'rgba(69, 87, 153, 0.4)',
           label: 'Running',
         };
       case 'pending':

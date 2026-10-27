@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, DollarSign, Plus, Trash2, Tag, Compass } from 'lucide-react';
+import ImageWithFallback from './ImageWithFallback';
 
 const CATEGORY_FALLBACK_IMAGES = {
   Food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
@@ -30,73 +31,83 @@ export default function ActivityCard({ activity, onAddClick, onDeleteClick, isAd
     return `${mins} mins`;
   };
 
-  const getCategoryBadgeClass = (cat) => {
-    switch (cat) {
-      case 'Sightseeing': return 'badge-info';
-      case 'Food': return 'badge-success';
-      case 'Adventure': return 'badge-info';
-      case 'Nature': return 'badge-success';
-      case 'Culture': return 'badge-info';
-      default: return 'badge-info';
-    }
-  };
-
-  const displayImage = activity.image && activity.image.trim()
-    ? activity.image
-    : getCategoryFallbackImage(activity.category);
+  const fallbackImg = getCategoryFallbackImage(activity.category);
+  const displayImage = activity.image && activity.image.trim() ? activity.image : fallbackImg;
 
   return (
-    <div className="glass-card flex flex-col justify-between" style={{ overflow: 'hidden' }}>
+    <div
+      className="glass-card flex flex-col justify-between"
+      style={{
+        overflow: 'hidden',
+        borderRadius: 'var(--radius-md)',
+        transition: 'var(--transition-normal)',
+      }}
+    >
       {/* Banner Image */}
-      <div style={{ height: '140px', width: '100%', position: 'relative', overflow: 'hidden' }}>
-        <img
+      <div style={{ height: '150px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+        <ImageWithFallback
           src={displayImage}
+          fallbackSrc={fallbackImg}
           alt={activity.name}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = getCategoryFallbackImage(activity.category);
-          }}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
-        <div style={{ position: 'absolute', top: '10px', left: '10px' }}>
-          <span className={`badge ${getCategoryBadgeClass(activity.category)}`} style={{ fontSize: '0.75rem' }}>
-            <Tag style={{ width: 10, height: 10 }} /> {activity.category}
+        <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 2 }}>
+          <span
+            className="badge"
+            style={{
+              background: 'rgba(16, 24, 47, 0.82)',
+              color: '#FFE0B9',
+              border: '1px solid rgba(255, 224, 185, 0.3)',
+              backdropFilter: 'blur(6px)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+            }}
+          >
+            <Tag style={{ width: 10, height: 10, color: '#E2A9CA' }} /> {activity.category}
           </span>
         </div>
       </div>
 
       {/* Content Body */}
-      <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ padding: '1.15rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem', lineHeight: '1.3' }}>
             {activity.name}
           </h4>
 
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', lineHeight: '1.4' }}>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '0.95rem', lineHeight: '1.5' }}>
             {activity.description}
           </p>
         </div>
 
         {/* Metrics & Actions */}
         <div>
-          <div className="flex items-center justify-between" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+          <div
+            className="flex items-center justify-between"
+            style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}
+          >
             <div className="flex items-center gap-1">
-              <Clock style={{ width: 13, height: 13, color: '#60a5fa' }} />
+              <Clock style={{ width: 13, height: 13, color: 'var(--primary)' }} />
               <span>{formatDuration(activity.duration)}</span>
             </div>
 
-            <div className="flex items-center gap-1" style={{ fontWeight: 600, color: '#34d399' }}>
-              <DollarSign style={{ width: 13, height: 13 }} />
+            <div className="flex items-center gap-1" style={{ fontWeight: 700, color: 'var(--primary)' }}>
               <span>{activity.cost > 0 ? `$${activity.cost}` : 'Free'}</span>
             </div>
           </div>
 
-          <div style={{ paddingTop: '0.65rem', borderTop: '1px solid var(--border-glass)' }}>
+          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border-glass)' }}>
             {onDeleteClick ? (
               <button
                 onClick={() => onDeleteClick(activity)}
                 className="btn"
-                style={{ width: '100%', background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.35rem', fontSize: '0.8rem' }}
+                style={{
+                  width: '100%',
+                  background: 'rgba(225, 29, 72, 0.1)',
+                  color: '#e11d48',
+                  border: '1px solid rgba(225, 29, 72, 0.25)',
+                  padding: '0.4rem',
+                  fontSize: '0.82rem',
+                }}
               >
                 <Trash2 style={{ width: 14, height: 14 }} />
                 <span>Remove Activity</span>
@@ -105,7 +116,7 @@ export default function ActivityCard({ activity, onAddClick, onDeleteClick, isAd
               <button
                 onClick={() => onAddClick && onAddClick(activity)}
                 className="btn btn-primary"
-                style={{ width: '100%', padding: '0.4rem', fontSize: '0.8rem' }}
+                style={{ width: '100%', padding: '0.45rem', fontSize: '0.82rem' }}
               >
                 <Plus style={{ width: 14, height: 14 }} />
                 <span>Add to Stop</span>

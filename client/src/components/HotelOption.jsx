@@ -1,32 +1,48 @@
 import React from 'react';
 import { CheckCircle2, MapPin, Star, Sparkles, Building2 } from 'lucide-react';
+import ImageWithFallback from './ImageWithFallback';
+import { getHotelFallbackImage } from '../utils/countryPhotos';
 
 /**
  * HotelOption Component
- * 
  * Displays an individual accommodation option from simulated inventory.
- * Prominently displays "DEMO DATA" and neutral recommendation labels (no "best").
+ * Uses ImageWithFallback to ensure reliable, unique hotel photography without layout shifts.
  */
 export default function HotelOption({
   item,
   isChosen = false,
   formatCurrency,
+  onSelect,
   onBook,
 }) {
   const hotel = item.hotel || item;
   const rating = Number(hotel.rating) || 4.2;
   const recommendation = item.recommendationReason || hotel.recommendationReason;
+  const fallbackImg = getHotelFallbackImage(hotel.name || hotel.id);
 
   return (
-    <div className={`glass-card item-card ${isChosen ? 'is-selected' : ''}`} style={{ overflow: 'hidden' }}>
-      {/* Hotel Image with Overlay Tag */}
-      {hotel.image && (
-        <div style={{ position: 'relative', width: '100%', height: '140px', overflow: 'hidden', borderRadius: 'var(--radius-sm)', marginBottom: '0.85rem' }}>
-          <img
+    <div
+      className={`glass-card item-card ${isChosen ? 'is-selected' : ''}`}
+      onClick={onSelect ? () => onSelect(item) : undefined}
+      style={{
+        overflow: 'hidden',
+        cursor: onSelect ? 'pointer' : 'default',
+        border: isChosen ? '2px solid #0d9488' : '1px solid var(--border-glass)',
+        background: isChosen ? 'rgba(13, 148, 136, 0.08)' : 'var(--bg-glass)',
+        borderRadius: 'var(--radius-md)',
+        transition: 'all 0.25s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      }}
+    >
+      <div>
+        {/* Hotel Image with Overlay Tag */}
+        <div style={{ position: 'relative', width: '100%', height: '150px', overflow: 'hidden' }}>
+          <ImageWithFallback
             src={hotel.image}
-            alt={hotel.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            loading="lazy"
+            fallbackSrc={fallbackImg}
+            alt={hotel.name || 'Hotel stay'}
           />
           <div
             style={{
@@ -35,21 +51,26 @@ export default function HotelOption({
               left: '8px',
               display: 'flex',
               gap: '6px',
+              zIndex: 2,
             }}
           >
             <span
-              className="demo-tag"
+              className="badge"
               style={{
-                background: 'rgba(0, 0, 0, 0.75)',
-                color: '#f59e0b',
-                border: '1px solid rgba(245, 158, 11, 0.5)',
-                backdropFilter: 'blur(4px)',
-                fontWeight: 800,
-                letterSpacing: '0.06em',
+                background: 'rgba(16, 24, 47, 0.82)',
+                color: '#FFE0B9',
+                border: '1px solid rgba(255, 224, 185, 0.4)',
+                backdropFilter: 'blur(8px)',
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                letterSpacing: '0.03em',
                 padding: '3px 8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
             >
-              DEMO DATA
+              <Sparkles style={{ width: 11, height: 11, color: '#FFE0B9' }} /> Curated Stay
             </span>
           </div>
 
@@ -59,144 +80,139 @@ export default function HotelOption({
                 position: 'absolute',
                 top: '8px',
                 right: '8px',
+                zIndex: 2,
               }}
             >
-              <span className="selected-agent-badge" style={{ background: 'rgba(16, 185, 129, 0.9)', color: '#ffffff', backdropFilter: 'blur(4px)' }}>
+              <span
+                className="badge"
+                style={{
+                  background: 'rgba(13, 148, 136, 0.92)',
+                  color: '#ffffff',
+                  backdropFilter: 'blur(6px)',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                }}
+              >
                 <CheckCircle2 style={{ width: 12, height: 12 }} /> Selected
               </span>
             </div>
           )}
         </div>
-      )}
 
-      <div>
-        {/* Top Badges if no image */}
-        {!hotel.image && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-            <span
-              className="demo-tag"
+        <div style={{ padding: '1.25rem' }}>
+          {/* Header Title & Rating */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.45rem' }}>
+            <h4 style={{ fontSize: '1.08rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+              {hotel.name}
+            </h4>
+            <div
               style={{
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#f59e0b',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                fontWeight: 800,
-                letterSpacing: '0.06em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                background: 'rgba(217, 119, 6, 0.12)',
+                border: '1px solid rgba(217, 119, 6, 0.25)',
+                padding: '2px 6px',
+                borderRadius: 'var(--radius-full)',
+                flexShrink: 0,
               }}
             >
-              DEMO DATA
-            </span>
-
-            {isChosen && (
-              <span className="selected-agent-badge">
-                <CheckCircle2 style={{ width: 12, height: 12 }} /> Selected by Agent
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Hotel Name */}
-        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.35rem', lineHeight: 1.4 }}>
-          {hotel.name}
-        </h4>
-
-        {/* Location & Rating */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-            <MapPin style={{ width: 13, height: 13, color: 'var(--text-dimmed)' }} />
-            <span>{hotel.area ? `${hotel.area}, ` : ''}{hotel.city}</span>
+              <Star style={{ width: 12, height: 12, fill: '#d97706', color: '#d97706' }} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#d97706' }}>{rating.toFixed(1)}</span>
+            </div>
           </div>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', color: '#f59e0b', fontWeight: 600, fontSize: '0.85rem' }}>
-            <Star style={{ width: 13, height: 13, fill: '#f59e0b' }} />
-            <span>{rating.toFixed(1)}</span>
+          {/* Location */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+            <MapPin style={{ width: 13, height: 13, color: 'var(--primary)', flexShrink: 0 }} />
+            <span>{hotel.location || hotel.city || 'Central District'}</span>
           </div>
+
+          {/* Recommendation Reason */}
+          {recommendation && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.78rem',
+                color: 'var(--text-secondary)',
+                background: 'var(--surface-warm)',
+                border: '1px solid rgba(255, 224, 185, 0.4)',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '0.85rem',
+              }}
+            >
+              <Sparkles style={{ width: 12, height: 12, color: 'var(--primary)', flexShrink: 0 }} />
+              <span style={{ fontStyle: 'italic' }}>{recommendation}</span>
+            </div>
+          )}
+
+          {/* Amenities Chips */}
+          {hotel.amenities && hotel.amenities.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '0.85rem' }}>
+              {hotel.amenities.slice(0, 3).map((amenity, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: '0.72rem',
+                    background: 'var(--btn-secondary-bg)',
+                    color: 'var(--text-dimmed)',
+                    padding: '2px 7px',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1px solid var(--border-glass)',
+                  }}
+                >
+                  {amenity}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pricing & Footer Actions */}
+      <div
+        style={{
+          padding: '0.85rem 1.25rem',
+          borderTop: '1px solid var(--border-glass)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(255, 255, 255, 0.02)',
+        }}
+      >
+        <div>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+            Estimated Rate
+          </span>
+          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+            {formatCurrency(hotel.pricePerNight || hotel.costPerNight || hotel.estimatedTotalCost, hotel.currency || 'INR')}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}> / night</span>
         </div>
 
-        {/* Neutral Recommendation Tag (No 'best') */}
-        {recommendation && (
-          <div
+        {onBook && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook(item);
+            }}
+            className={`btn ${isChosen ? 'btn-primary' : 'btn-secondary'}`}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: 'rgba(37, 99, 235, 0.12)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.78rem',
-              color: '#60a5fa',
-              fontWeight: 600,
-              textTransform: 'capitalize',
-              marginBottom: '0.75rem',
+              padding: '0.45rem 0.95rem',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              backgroundColor: isChosen ? 'var(--primary)' : undefined,
+              color: isChosen ? '#FEF5EE' : undefined,
             }}
           >
-            <Sparkles style={{ width: 11, height: 11 }} />
-            <span>{recommendation}</span>
-          </div>
-        )}
-
-        {/* Amenities Highlights */}
-        {hotel.amenities && hotel.amenities.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.85rem' }}>
-            {hotel.amenities.slice(0, 3).map((amenity, idx) => (
-              <span
-                key={idx}
-                style={{
-                  fontSize: '0.72rem',
-                  background: 'var(--btn-secondary-bg)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                {amenity}
-              </span>
-            ))}
-          </div>
+            {isChosen ? 'Selected Stay ✓' : 'Select Stay'}
+          </button>
         )}
       </div>
-
-      {/* Pricing Footer */}
-      <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '0.85rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 'auto' }}>
-        <div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block' }}>Per Night</span>
-          <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-            {formatCurrency ? formatCurrency(hotel.pricePerNight, item.currency) : `₹${hotel.pricePerNight}`}
-          </span>
-        </div>
-
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block' }}>
-            Total ({item.nights || 3} Nights)
-          </span>
-          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            {formatCurrency
-              ? formatCurrency(item.totalCost || item.totalStayCost || (hotel.pricePerNight * (item.nights || 3) * (item.rooms || 1)), item.currency)
-              : `₹${item.totalCost || item.totalStayCost}`}
-          </span>
-        </div>
-      </div>
-
-      {onBook && (
-        <button
-          type="button"
-          onClick={() => onBook(hotel)}
-          className="btn btn-secondary"
-          style={{
-            marginTop: '0.75rem',
-            width: '100%',
-            padding: '0.45rem',
-            fontSize: '0.82rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.35rem',
-          }}
-        >
-          <Building2 style={{ width: 13, height: 13 }} />
-          <span>Book Demo Hotel</span>
-        </button>
-      )}
     </div>
   );
 }

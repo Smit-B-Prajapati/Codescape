@@ -1,11 +1,11 @@
 import React from 'react';
 
 const CATEGORY_COLORS = {
-  Transportation: '#3b82f6', // Azure Blue
-  Accommodation: '#8b5cf6', // Indigo Violet
-  Food: '#10b981',         // Emerald Green
-  Activities: '#f59e0b',   // Amber Gold
-  Other: '#64748b',        // Slate Neutral
+  Transportation: '#455799', // Periwinkle
+  Accommodation: '#B295C9',  // Lavender
+  Food: '#d97706',           // Warm Amber
+  Activities: '#E2A9CA',     // Soft Rose
+  Other: '#64748b',          // Slate Neutral
 };
 
 export default function BudgetChart({ categories = {}, totalCost = 0 }) {
@@ -47,7 +47,7 @@ export default function BudgetChart({ categories = {}, totalCost = 0 }) {
 
   return (
     <div className="glass-card" style={{ padding: '1.75rem' }}>
-      <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+      <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
         Category Cost Distribution
       </h3>
 
@@ -62,17 +62,17 @@ export default function BudgetChart({ categories = {}, totalCost = 0 }) {
                   key={slice.category || i}
                   d={slice.pathData}
                   fill={slice.color}
-                  stroke="#111827"
+                  stroke="var(--bg-card)"
                   strokeWidth="0.04"
                 />
               ))}
               {/* Center Hole for Donut Effect */}
-              <circle cx="0" cy="0" r="0.65" fill="#111827" />
+              <circle cx="0" cy="0" r="0.65" fill="var(--bg-card)" />
             </svg>
 
             <div style={{ position: 'absolute', textAlign: 'center', pointerEvents: 'none' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Spent</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 ${totalCost.toLocaleString()}
               </div>
             </div>

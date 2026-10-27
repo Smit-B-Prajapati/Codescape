@@ -53,7 +53,7 @@ export default function CalendarGrid({ days = [], selectedDate, onSelectDate, tr
       {/* Month Header Navigation */}
       <div className="flex justify-between items-center" style={{ marginBottom: '1.25rem' }}>
         <div className="flex items-center gap-2">
-          <CalendarIcon style={{ width: 22, height: 22, color: '#3b82f6' }} />
+          <CalendarIcon style={{ width: 22, height: 22, color: 'var(--primary)' }} />
           <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             {monthNames[month]} {year}
           </h3>
@@ -138,16 +138,16 @@ export default function CalendarGrid({ days = [], selectedDate, onSelectDate, tr
                 padding: '0.45rem',
                 borderRadius: 'var(--radius-sm)',
                 border: isSelected 
-                  ? '2px solid #3b82f6' 
+                  ? '2px solid var(--primary)' 
                   : isTripDay 
-                  ? '1px solid rgba(59, 130, 246, 0.4)' 
-                  : '1px solid rgba(255, 255, 255, 0.04)',
+                  ? '1px solid rgba(69, 87, 153, 0.4)' 
+                  : '1px solid var(--border-glass)',
                 background: isSelected
-                  ? 'rgba(37, 99, 235, 0.3)'
+                  ? 'rgba(69, 87, 153, 0.18)'
                   : isTripDay
-                  ? 'rgba(30, 58, 138, 0.25)'
-                  : 'rgba(255, 255, 255, 0.02)',
-                boxShadow: isSelected ? '0 0 12px rgba(59, 130, 246, 0.4)' : 'none',
+                  ? 'var(--surface-warm)'
+                  : 'transparent',
+                boxShadow: isSelected ? 'var(--shadow-glow)' : 'none',
                 cursor: isTripDay ? 'pointer' : 'default',
                 opacity: isTripDay ? 1 : 0.45,
                 display: 'flex',
