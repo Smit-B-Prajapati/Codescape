@@ -7,9 +7,25 @@ const CITY_ALIASES = {
   vadodara: ['vadodara', 'baroda', 'brc'],
   goa: ['goa', 'madgaon', 'mao', 'panaji', 'vasco', 'margao', 'karmali'],
   mumbai: ['mumbai', 'bombay', 'csmt', 'ltt', 'mmct', 'bdts', 'bandra', 'dadar'],
+  pune: ['pune', 'poona', 'pa'],
   ahmedabad: ['ahmedabad', 'adi', 'sabarmati'],
   jaipur: ['jaipur', 'jp'],
   delhi: ['delhi', 'new delhi', 'ndls', 'dec', 'dli', 'hazrat nizamuddin', 'nzm'],
+  agra: ['agra', 'agc', 'af', 'cantt'],
+  chennai: ['chennai', 'madras', 'mas', 'ms'],
+  bangalore: ['bangalore', 'bengaluru', 'sbc', 'ypr'],
+  kolkata: ['kolkata', 'calcutta', 'hwh', 'sdah'],
+  hyderabad: ['hyderabad', 'secunderabad', 'sc', 'hyd'],
+  varanasi: ['varanasi', 'banaras', 'bsb', 'kashi'],
+  amritsar: ['amritsar', 'asr'],
+  chandigarh: ['chandigarh', 'cdg'],
+  lucknow: ['lucknow', 'lko', 'ljn'],
+  udaipur: ['udaipur', 'udz'],
+  mysore: ['mysore', 'mysuru', 'mys'],
+  kochi: ['kochi', 'cochin', 'ernakulam', 'ers', 'ern', 'kerala'],
+  surat: ['surat', 'st'],
+  junagadh: ['junagadh', 'jnd', 'girnar', 'uparkot'],
+  rajkot: ['rajkot', 'rjt'],
 };
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -19,8 +35,12 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 export const normalizeCity = (input = '') => {
   const clean = (input || '').toLowerCase().trim();
+  if (!clean) return '';
   for (const [canonical, aliases] of Object.entries(CITY_ALIASES)) {
-    if (clean === canonical || aliases.some((a) => clean.includes(a) || a.includes(clean))) {
+    if (
+      clean === canonical ||
+      aliases.some((a) => clean === a || (a.length >= 4 && clean.length >= 4 && (clean.includes(a) || a.includes(clean))))
+    ) {
       return canonical;
     }
   }

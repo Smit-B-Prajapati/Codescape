@@ -6,11 +6,32 @@ import { DEMO_HOTELS } from '../data/hotels.js';
 const CITY_ALIASES = {
   goa: ['goa', 'north goa', 'south goa', 'candolim', 'calangute', 'panaji', 'morjim', 'anjuna', 'palolem', 'madgaon', 'margao', 'vasco'],
   mumbai: ['mumbai', 'bombay', 'colaba', 'bandra', 'marine drive', 'juhu'],
+  pune: ['pune', 'poona', 'pa'],
   jaipur: ['jaipur', 'pink city', 'bani park', 'hawa mahal'],
+  kashmir: ['kashmir', 'srinagar', 'gulmarg', 'pahalgam', 'dal lake'],
+  vadodara: ['vadodara', 'baroda', 'brc'],
+  ahmedabad: ['ahmedabad', 'amdavad', 'adi'],
+  delhi: ['delhi', 'new delhi', 'ndls'],
+  agra: ['agra', 'agc', 'af', 'cantt'],
+  chennai: ['chennai', 'madras', 't. nagar', 'marina', 'mylapore', 'adyar'],
+  bangalore: ['bangalore', 'bengaluru', 'koramangala', 'indiranagar', 'whitefield'],
+  kolkata: ['kolkata', 'calcutta', 'park street', 'howrah'],
+  hyderabad: ['hyderabad', 'secunderabad', 'banjara hills', 'hitech city'],
+  varanasi: ['varanasi', 'banaras', 'bsb', 'kashi'],
+  amritsar: ['amritsar', 'asr'],
+  chandigarh: ['chandigarh', 'cdg'],
+  lucknow: ['lucknow', 'lko', 'ljn'],
+  udaipur: ['udaipur', 'udz'],
+  mysore: ['mysore', 'mysuru', 'mys'],
+  kochi: ['kochi', 'cochin', 'ernakulam', 'ers', 'ern', 'kerala'],
+  surat: ['surat', 'st'],
+  junagadh: ['junagadh', 'jnd', 'girnar', 'uparkot'],
+  rajkot: ['rajkot', 'rjt'],
   paris: ['paris', 'tour eiffel', 'montmartre'],
   bali: ['bali', 'ubud', 'seminyak', 'canggu', 'kuta', 'denpasar'],
   tokyo: ['tokyo', 'shinjuku', 'asakusa', 'akihabara', 'shibuya'],
   kyoto: ['kyoto', 'gion', 'higashiyama', 'sanjo'],
+  switzerland: ['switzerland', 'swiss', 'zurich', 'interlaken', 'zermatt', 'lucerne', 'geneva', 'bern'],
 };
 
 /**
@@ -18,8 +39,12 @@ const CITY_ALIASES = {
  */
 export const normalizeCity = (input = '') => {
   const clean = (input || '').toLowerCase().trim();
+  if (!clean) return '';
   for (const [canonical, aliases] of Object.entries(CITY_ALIASES)) {
-    if (clean === canonical || aliases.some((a) => clean.includes(a) || a.includes(clean))) {
+    if (
+      clean === canonical ||
+      aliases.some((a) => clean === a || (a.length >= 4 && clean.length >= 4 && (clean.includes(a) || a.includes(clean))))
+    ) {
       return canonical;
     }
   }
@@ -59,6 +84,53 @@ const ALLOWED_PARAMETERS = new Set([
   'budgetPerNight',
   'preference',
 ]);
+
+/**
+ * Generates rich, authentic demo hotels for any destination city to ensure
+ * travelers always have options across budget, mid-range, and luxury tiers.
+ */
+export function generateSyntheticHotelsForCity(cityName) {
+  const cleanCity = cityName ? cityName.trim() : 'Destination';
+  const cleanKey = cleanCity.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  return [
+    {
+      id: `demo_htl_${cleanKey}_01`,
+      name: `${cleanCity} Central Heritage Residency & Suites`,
+      city: cleanCity,
+      area: `${cleanCity} City Centre`,
+      pricePerNight: 1400,
+      rating: 4.2,
+      roomsAvailable: 12,
+      amenities: ['AC Private Rooms', 'Free Wi-Fi', '24/7 Front Desk', 'Breakfast Available'],
+      image: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80',
+      isDemo: true,
+    },
+    {
+      id: `demo_htl_${cleanKey}_02`,
+      name: `${cleanCity} Grand Boulevard Hotel & Courtyard`,
+      city: cleanCity,
+      area: `${cleanCity} Promenade District`,
+      pricePerNight: 3200,
+      rating: 4.5,
+      roomsAvailable: 8,
+      amenities: ['Swimming Pool', 'Complimentary Breakfast', 'Free High-Speed Wi-Fi', 'Multi-Cuisine Restaurant'],
+      image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80',
+      isDemo: true,
+    },
+    {
+      id: `demo_htl_${cleanKey}_03`,
+      name: `${cleanCity} Royal Palace & Spa Resort`,
+      city: cleanCity,
+      area: `${cleanCity} Scenic Boulevard`,
+      pricePerNight: 6800,
+      rating: 4.8,
+      roomsAvailable: 6,
+      amenities: ['Luxury Wellness Spa', 'Infinity Pool', 'Valet Parking', 'Fine Dining Lounge', 'Concierge Service'],
+      image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80',
+      isDemo: true,
+    },
+  ];
+}
 
 /**
  * Tool: searchHotels
@@ -112,7 +184,13 @@ export async function searchHotels(rawParams = {}) {
     return hCity === normalizedTargetCity || (h.area && normalizeCity(h.area) === normalizedTargetCity);
   });
 
-  // If no matching destination, return empty list gracefully (zero hallucination)
+  // If no matching destination in catalog, dynamically generate realistic authentic destination hotels
+  if (matchedHotels.length === 0 && city && city.trim() && city.trim().length > 2) {
+    matchedHotels = generateSyntheticHotelsForCity(city);
+    logs.push(`Generated ${matchedHotels.length} authentic demo hotels for "${city}"`);
+  }
+
+  // If still no matching destination, return empty list gracefully (zero hallucination)
   if (matchedHotels.length === 0) {
     logs.push(`Found 0 demo hotel options in ${city} (DEMO HOTEL DATA)`);
     return {
