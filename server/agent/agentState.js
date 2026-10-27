@@ -33,6 +33,11 @@ export const TRIP_REQUIREMENTS_SCHEMA = {
       enum: ['budget', 'mid-range', 'luxury', 'hostel', 'resort', null],
       description: 'Preferred accommodation tier or style',
     },
+    stops: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Intermediate stops or day-trip destinations within the trip',
+    },
     transportPreference: {
       type: ['string', 'null'],
       enum: ['flight', 'train', 'bus', 'self-drive', null],
@@ -59,6 +64,7 @@ export const TRIP_REQUIREMENTS_SCHEMA = {
 export const createDefaultRequirements = () => ({
   origin: null,
   destinations: [],
+  stops: [],
   startDate: null,
   endDate: null,
   durationDays: null,
@@ -191,7 +197,16 @@ export function validateAndNormalizeRequirements(extracted = {}) {
       .filter((i) => i.length > 0);
   }
 
-  // 7. Preferences
+  // 7. Stops / Intermediate destinations
+  if (Array.isArray(rawReq.stops)) {
+    normalized.stops = rawReq.stops
+      .map((s) => (typeof s === 'string' ? s.trim() : (s?.city || s?.name || '')))
+      .filter((s) => s.length > 0);
+  } else {
+    normalized.stops = [];
+  }
+
+  // 8. Preferences
   if (rawReq.accommodationPreference) {
     normalized.accommodationPreference = String(rawReq.accommodationPreference).toLowerCase().trim();
   }
@@ -247,25 +262,75 @@ export function extractFallbackRequirements(prompt = '') {
     }
   }
 
-  // Destination extraction
-  const destMatch = text.match(/(?:to|visit|trip to|explore)\s+([A-Za-z]+)/i);
-  if (destMatch && destMatch[1]) {
-    const cand = destMatch[1].trim();
-    const ignoredDestWords = ['me', 'somewhere', 'anywhere', 'a', 'the', 'travel', 'go', 'see', 'vacation', 'be', 'stay', 'chill', 'relax', 'my'];
-    if (!ignoredDestWords.includes(cand.toLowerCase())) {
-      req.destinations = [cand];
+  // Destination extraction: Prioritize verified cities first to avoid misparsing conjunctions/prepositions
+  const knownCities = [
+    { name: 'Switzerland', aliases: ['switzerland', 'swiss', 'zurich', 'interlaken', 'zermatt', 'lucerne', 'geneva', 'bern'] },
+    { name: 'Kashmir', aliases: ['kashmir', 'srinagar', 'gulmarg', 'pahalgam', 'dal lake'] },
+    { name: 'Goa', aliases: ['goa', 'north goa', 'south goa', 'candolim', 'calangute', 'panaji', 'morjim', 'anjuna'] },
+    { name: 'Jaipur', aliases: ['jaipur', 'pink city'] },
+    { name: 'Mumbai', aliases: ['mumbai', 'bombay'] },
+    { name: 'Vadodara', aliases: ['vadodara', 'baroda'] },
+    { name: 'Ahmedabad', aliases: ['ahmedabad', 'amdavad'] },
+    { name: 'Delhi', aliases: ['delhi', 'new delhi'] },
+    { name: 'Bangalore', aliases: ['bangalore', 'bengaluru'] },
+    { name: 'Paris', aliases: ['paris'] },
+    { name: 'Tokyo', aliases: ['tokyo'] },
+    { name: 'Kyoto', aliases: ['kyoto'] },
+    { name: 'Rome', aliases: ['rome'] },
+    { name: 'London', aliases: ['london'] },
+    { name: 'Bali', aliases: ['bali', 'ubud'] },
+    { name: 'Santorini', aliases: ['santorini'] },
+    { name: 'Dubai', aliases: ['dubai'] },
+    { name: 'Singapore', aliases: ['singapore'] },
+    { name: 'Bangkok', aliases: ['bangkok'] },
+    { name: 'Kerala', aliases: ['kerala', 'munnar', 'alleppey', 'kochi'] },
+    { name: 'Manali', aliases: ['manali'] },
+    { name: 'Shimla', aliases: ['shimla'] },
+    { name: 'Udaipur', aliases: ['udaipur'] },
+    { name: 'Agra', aliases: ['agra'] },
+    { name: 'Varanasi', aliases: ['varanasi', 'banaras', 'kashi'] },
+  ];
+
+  for (const kc of knownCities) {
+    const isMatched = kc.aliases.some((alias) => {
+      const rx = new RegExp(`\\b${alias}\\b`, 'i');
+      return rx.test(text);
+    });
+    if (isMatched && (!req.origin || req.origin.toLowerCase() !== kc.name.toLowerCase())) {
+      req.destinations = [kc.name];
+      break;
     }
   }
+
+  // Fallback to regex destination extraction only if no known city matched
   if (req.destinations.length === 0) {
-    // Check known travel destinations in text
-    const knownCities = ['Goa', 'Paris', 'Jaipur', 'Mumbai', 'Tokyo', 'Kyoto', 'Vadodara', 'Ahmedabad', 'Bangalore', 'Bali', 'Santorini', 'Rome', 'London', 'Dubai'];
-    for (const city of knownCities) {
-      const regex = new RegExp(`\\b${city}\\b`, 'i');
-      if (regex.test(text) && (!req.origin || req.origin.toLowerCase() !== city.toLowerCase())) {
-        req.destinations = [city];
-        break;
+    const destMatch = text.match(/(?:to|visit|trip to|explore|in)\s+([A-Za-z]+)/i)
+      || text.match(/\b([A-Za-z]+)\s+trip\b/i);
+
+    const IGNORED_DEST_WORDS = new Set([
+      'while', 'when', 'where', 'what', 'which', 'who', 'how', 'why',
+      'me', 'somewhere', 'anywhere', 'a', 'an', 'the', 'travel', 'go', 'see', 'vacation',
+      'be', 'stay', 'chill', 'relax', 'my', 'day', 'days', 'weekend', 'quick', 'road',
+      'budget', 'cost', 'money', 'keeping', 'staying', 'having', 'giving', 'getting',
+      'hotel', 'hotels', 'train', 'trains', 'flight', 'flights', 'bus', 'buses', 'transport',
+      'itinerary', 'plan', 'planning', 'trip', 'trips', 'place', 'places', 'tour', 'tours',
+      'under', 'above', 'around', 'near', 'nearby', 'between', 'during', 'before', 'after',
+      'from', 'to', 'for', 'and', 'or', 'but', 'so', 'then', 'than', 'just', 'only', 'all',
+      'some', 'any', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'another',
+      'such', 'own', 'same', 'too', 'very', 'can', 'will', 'should', 'would', 'could',
+      'now', 'please', 'make', 'create', 'build', 'give', 'show', 'suggest', 'recommend'
+    ]);
+
+    if (destMatch && destMatch[1]) {
+      const cand = destMatch[1].trim();
+      if (!IGNORED_DEST_WORDS.has(cand.toLowerCase()) && cand.length > 2) {
+        req.destinations = [cand];
       }
     }
+  }
+
+  if (req.destinations.length === 0) {
+    missingInfo.push('Specific destination city is missing or vague');
   }
 
   // Duration extraction
@@ -365,34 +430,30 @@ export async function extractTripRequirements(userPrompt) {
 Your task is to analyze the user's travel request and extract facts into a structured JSON schema.
 
 CRITICAL INSTRUCTIONS:
-1. EXTRACT ONLY EXPLICIT FACTS. Do NOT invent specific dates, origins, or budgets that the user never specified.
-2. If exact dates are not given, 'startDate' and 'endDate' MUST be null. Add 'Exact travel dates' to 'missingInformation'.
-3. If duration in days is given (e.g., '5 day', '4 days'), extract 'durationDays' as an integer. If 'weekend' is mentioned without days, durationDays should be 2 with an entry in 'assumptions'.
-4. If destination is generic (e.g. 'somewhere peaceful', 'any beach'), 'destinations' MUST be empty [] and add 'Specific destination city' to 'missingInformation'. Preserve 'peaceful' under 'interests'.
-5. Convert traveler count into an integer (e.g. 'for me' = 1, 'for 2 people' = 2). If completely unspecified, set 1 and record in 'assumptions'.
-6. Normalize currency symbols ('₹' -> 'INR', '$' -> 'USD', '€' -> 'EUR').
-7. Convert budget into a numeric number (e.g. '₹20,000' -> 20000).
-8. Categorize preferences:
-   - accommodationPreference: 'budget', 'mid-range', 'luxury', or null.
-   - transportPreference: 'flight', 'train', 'bus', 'self-drive', or null.
-   - pace: 'relaxed', 'moderate', 'fast-paced', or null.
-9. Distinguish clearly:
-   - 'requirements': the extracted normalized values.
-   - 'missingInformation': array of strings identifying essential missing trip parameters (e.g. dates, destination, origin, budget).
-   - 'assumptions': array of strings detailing any defaults or interpretations made by the system.
-   - 'confidence': confidence score from 0.0 to 1.0 based on how complete the user input is.
-
-Respond strictly with a single JSON object.`;
+1. You MUST output a JSON object containing the top-level property "requirements" with:
+   - destinations: array of string destination names (e.g. ["Switzerland"]).
+   - origin: string departure city or null if not mentioned.
+   - durationDays: integer number of days (e.g. 5).
+   - budget: number or null.
+   - currency: string currency code (e.g. "INR", "USD", "EUR").
+   - travelers: integer (default 1).
+   - interests: array of string interest categories.
+2. In addition to "requirements", include "missingInformation" (array of strings), "assumptions" (array of strings), and "confidence" (number between 0.0 and 1.0).
+3. Output strictly valid JSON matching this schema.`;
 
   try {
     const aiResponse = await generateStructuredResponse({
       systemPrompt,
       userPrompt: promptText,
       schema: {
-        requirements: TRIP_REQUIREMENTS_SCHEMA,
-        missingInformation: { type: 'array', items: { type: 'string' } },
-        assumptions: { type: 'array', items: { type: 'string' } },
-        confidence: { type: 'number' },
+        type: 'object',
+        properties: {
+          requirements: TRIP_REQUIREMENTS_SCHEMA,
+          missingInformation: { type: 'array', items: { type: 'string' } },
+          assumptions: { type: 'array', items: { type: 'string' } },
+          confidence: { type: 'number' },
+        },
+        required: ['requirements'],
       },
       fallbackData: fallbackResult,
     });
@@ -408,6 +469,23 @@ Respond strictly with a single JSON object.`;
 
     // Post-validate and normalize AI response
     const validated = validateAndNormalizeRequirements(aiResponse.data);
+
+    // Safeguard: Merge verified factual entities from deterministic parser if AI omitted them
+    if ((!validated.requirements.destinations || validated.requirements.destinations.length === 0) && fallbackResult.requirements.destinations.length > 0) {
+      validated.requirements.destinations = fallbackResult.requirements.destinations;
+    }
+    if (!validated.requirements.durationDays && fallbackResult.requirements.durationDays) {
+      validated.requirements.durationDays = fallbackResult.requirements.durationDays;
+    }
+    if (!validated.requirements.budget && fallbackResult.requirements.budget) {
+      validated.requirements.budget = fallbackResult.requirements.budget;
+    }
+    if (!validated.requirements.currency && fallbackResult.requirements.currency) {
+      validated.requirements.currency = fallbackResult.requirements.currency;
+    }
+    if (!validated.requirements.origin && fallbackResult.requirements.origin) {
+      validated.requirements.origin = fallbackResult.requirements.origin;
+    }
 
     return {
       ...validated,

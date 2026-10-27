@@ -15,6 +15,107 @@
 const USD_TO_INR_RATE = 83;
 
 /**
+ * Deterministically calculates a target budget allocation across categories
+ * prior to selecting activities or accommodation.
+ * 
+ * Consideration factors:
+ * - Total trip budget
+ * - Trip duration & traveler count
+ * - Destination cost level
+ * - Accommodation preference
+ * - Contingency reserve (unspent buffer)
+ * 
+ * @param {Object} params
+ * @returns {Object} Target budget envelopes for each spending category
+ */
+export function allocateTripBudget({
+  totalBudget = null,
+  durationDays = 3,
+  travelers = 1,
+  destination = '',
+  currency = 'INR',
+  accommodationPreference = 'any',
+  hasTransport = false,
+} = {}) {
+  const budget = Number(totalBudget);
+  if (!budget || isNaN(budget) || budget <= 0) {
+    return {
+      hasBudgetLimit: false,
+      accommodationBudget: Infinity,
+      foodBudget: Infinity,
+      activitiesBudget: Infinity,
+      transportBudget: Infinity,
+      miscellaneousBudget: Infinity,
+      contingencyReserve: 0,
+      totalBudget: null,
+      maxNightlyRate: Infinity,
+      maxDailyFoodPerPerson: Infinity,
+      maxDailyMiscPerPerson: Infinity,
+    };
+  }
+
+  const curr = (currency || 'INR').toUpperCase();
+  const isINR = curr === 'INR';
+  const travelerCount = Math.max(1, parseInt(travelers, 10) || 1);
+  const daysCount = Math.max(1, parseInt(durationDays, 10) || 1);
+  const nightsCount = Math.max(1, daysCount - 1);
+  const roomsNeeded = Math.max(1, Math.ceil(travelerCount / 2));
+
+  // Contingency reserve: 8% of budget (kept as an unspent reserve, NOT counted as spent)
+  const contingencyReserve = Math.round(budget * 0.08);
+  const spendableBudget = Math.max(0, budget - contingencyReserve);
+
+  // Default baseline percentage allocations
+  let accommodationPct = 0.38;
+  let foodPct = 0.25;
+  let activitiesPct = 0.22;
+  let miscTransitPct = 0.15;
+
+  if (hasTransport) {
+    accommodationPct = 0.32;
+    foodPct = 0.20;
+    activitiesPct = 0.18;
+    miscTransitPct = 0.10;
+  }
+
+  // Adjust for luxury or budget preferences
+  const pref = String(accommodationPreference || '').toLowerCase();
+  if (pref.includes('luxury') || pref.includes('resort') || pref.includes('5-star')) {
+    accommodationPct += 0.10;
+    activitiesPct = Math.max(0.12, activitiesPct - 0.05);
+    foodPct = Math.max(0.15, foodPct - 0.05);
+  } else if (pref.includes('budget') || pref.includes('hostel') || pref.includes('homestay')) {
+    accommodationPct = Math.max(0.20, accommodationPct - 0.10);
+    activitiesPct += 0.05;
+    miscTransitPct += 0.05;
+  }
+
+  // Normalize percentages to sum to exactly 1.0 of spendableBudget
+  const totalPct = accommodationPct + foodPct + activitiesPct + miscTransitPct;
+  const factor = 1.0 / totalPct;
+
+  const accommodationBudget = Math.round(spendableBudget * accommodationPct * factor);
+  const foodBudget = Math.round(spendableBudget * foodPct * factor);
+  const activitiesBudget = Math.round(spendableBudget * activitiesPct * factor);
+  const miscellaneousBudget = Math.round(spendableBudget * miscTransitPct * factor);
+
+  return {
+    hasBudgetLimit: true,
+    totalBudget: budget,
+    spendableBudget,
+    contingencyReserve,
+    accommodationBudget,
+    foodBudget,
+    activitiesBudget,
+    miscellaneousBudget,
+    maxNightlyRate: Math.max(isINR ? 600 : 15, Math.floor(accommodationBudget / (nightsCount * roomsNeeded))),
+    maxDailyFoodPerPerson: Math.max(isINR ? 200 : 5, Math.floor(foodBudget / (daysCount * travelerCount))),
+    maxDailyMiscPerPerson: Math.max(isINR ? 50 : 2, Math.floor(miscellaneousBudget / (daysCount * travelerCount))),
+    currency: curr,
+  };
+}
+
+/**
  * Calculates a complete trip financial estimate and budget utilization breakdown.
  * Deterministic application logic only.
  * 
@@ -26,46 +127,27 @@ const USD_TO_INR_RATE = 83;
  * @param {number} [params.nights=3] - Number of stay nights
  * @param {number} [params.budget=null] - User budget limit
  * @param {string} [params.currency='INR'] - Currency code ('INR', 'USD', etc.)
- * @returns {{
- *   breakdown: {
- *     transportTotal: number,
- *     accommodationTotal: number,
- *     activityTotal: number,
- *     foodEstimate: number,
- *     miscellaneousEstimate: number,
- *     transportation: number,
- *     accommodation: number,
- *     activities: number,
- *     food: number,
- *     miscellaneous: number
- *   },
- *   transportTotal: number,
- *   accommodationTotal: number,
- *   activityTotal: number,
- *   foodEstimate: number,
- *   miscellaneousEstimate: number,
- *   totalEstimatedCost: number,
- *   budget: number|null,
- *   remainingBudget: number|null,
- *   withinBudget: boolean,
- *   budgetUtilizationPercentage: number|null,
- *   currency: string,
- *   days: number,
- *   nights: number,
- *   travelers: number
- * }}
+ * @returns {Object} Complete verified budget summary
  */
 export function calculateTripEstimate({
   transport = null,
   hotels = null,
+  hotel = null,
+  selectedHotel = null,
   activities = [],
   travelers = 1,
-  nights = 3,
+  nights = null,
+  durationDays = null,
   budget = null,
   currency = 'INR',
+  foodDailyAllowance = null,
+  miscDailyAllowance = null,
 } = {}) {
   const travelerCount = Math.max(1, parseInt(travelers, 10) || 1);
-  const nightsCount = Math.max(1, parseInt(nights, 10) || 1);
+  const nightsCount = nights !== null && nights !== undefined
+    ? Math.max(1, parseInt(nights, 10) || 1)
+    : (durationDays ? Math.max(1, parseInt(durationDays, 10) - 1) : 3);
+  const resolvedHotels = hotels || hotel || selectedHotel || null;
   const daysCount = nightsCount + 1;
   const curr = (currency || 'INR').toUpperCase();
   const isINR = curr === 'INR';
@@ -82,7 +164,6 @@ export function calculateTripEstimate({
         return sum + Number(t.totalRoundTripCost);
       }
       if (t.totalPrice !== undefined && t.totalPrice !== null) {
-        // One-way specified in demo dataset -> assume round-trip return
         return sum + Number(t.totalPrice) * 2;
       }
       const p = Number(t.pricePerPerson || t.price || 0);
@@ -90,10 +171,10 @@ export function calculateTripEstimate({
     }, 0);
   }
 
-  // 2. Calculate Accommodation Total
+  // 2. Calculate Accommodation Total (stay total for durationNights and needed rooms)
   let accommodationTotal = 0;
-  if (hotels) {
-    const hotelList = Array.isArray(hotels) ? hotels : [hotels];
+  if (resolvedHotels) {
+    const hotelList = Array.isArray(resolvedHotels) ? resolvedHotels : [resolvedHotels];
     accommodationTotal = hotelList.reduce((sum, h) => {
       if (h.totalCost !== undefined && h.totalCost !== null) {
         return sum + Number(h.totalCost);
@@ -107,38 +188,72 @@ export function calculateTripEstimate({
     }, 0);
   }
 
-  // 3. Calculate Activities Total
+  // 3. Calculate Activities Total (respects per-person vs group-level pricing)
   const activityList = Array.isArray(activities) ? activities : [];
   const activityTotal = activityList.reduce((sum, act) => {
-    const costPerPerson = Number(act.cost || 0);
-    return sum + costPerPerson * travelerCount;
+    const cost = Number(act.cost !== undefined ? act.cost : (act.price || 0));
+    if (isNaN(cost) || cost <= 0) return sum;
+    const isPerPerson = act.pricePerPerson !== false;
+    return sum + (isPerPerson ? cost * travelerCount : cost);
   }, 0);
 
   // 4. Calculate Food Estimate (Standard daily per traveler allowance)
-  // INR: ₹500/day/traveler, USD: $12/day/traveler
-  const dailyFoodAllowance = isINR ? 500 : Math.round(500 / USD_TO_INR_RATE);
-  const foodEstimate = dailyFoodAllowance * daysCount * travelerCount;
+  // Calibrated according to budget tightness:
+  // - High budget (>= ₹2,500/traveler/day): ₹600/day
+  // - Standard budget (₹1,500–₹2,500/traveler/day): ₹450/day
+  // - Economical budget (< ₹1,500/traveler/day): ₹250–₹300/day
+  const budgetPerPersonPerDay = budget ? Number(budget) / (travelerCount * daysCount) : 2500;
+  let defaultDailyFood = isINR ? 450 : 12;
+  if (isINR) {
+    if (budgetPerPersonPerDay < 1200) {
+      defaultDailyFood = 250;
+    } else if (budgetPerPersonPerDay < 2000) {
+      defaultDailyFood = 350;
+    } else if (budgetPerPersonPerDay > 4000) {
+      defaultDailyFood = 600;
+    }
+  } else {
+    if (budgetPerPersonPerDay < 25) {
+      defaultDailyFood = 8;
+    }
+  }
 
-  // 5. Calculate Miscellaneous / Local Transit Estimate (Local transport, entry passes, tips)
-  // INR: ₹200/day/traveler, USD: $5/day/traveler
-  const dailyMiscAllowance = isINR ? 200 : Math.round(200 / USD_TO_INR_RATE);
-  const miscellaneousEstimate = dailyMiscAllowance * daysCount * travelerCount;
+  const dailyFoodAllowance = foodDailyAllowance !== null && foodDailyAllowance !== undefined
+    ? Number(foodDailyAllowance)
+    : defaultDailyFood;
+  const foodEstimate = Math.round(dailyFoodAllowance * daysCount * travelerCount);
 
-  // 6. Aggregate Total Estimated Cost
+  // 5. Calculate Miscellaneous / Local Transit Estimate (Local transit, entry passes, tips)
+  let defaultDailyMisc = isINR ? 150 : 4;
+  if (isINR && budgetPerPersonPerDay < 1200) {
+    defaultDailyMisc = 80;
+  }
+  const dailyMiscAllowance = miscDailyAllowance !== null && miscDailyAllowance !== undefined
+    ? Number(miscDailyAllowance)
+    : defaultDailyMisc;
+  const miscellaneousEstimate = Math.round(dailyMiscAllowance * daysCount * travelerCount);
+
+  // 6. Aggregate Total Estimated Cost (Actual planned spending)
+  // IMPORTANT: Contingency reserve is displayed separately, NOT counted as money already spent.
   const totalEstimatedCost = Math.round(
     transportTotal + accommodationTotal + activityTotal + foodEstimate + miscellaneousEstimate
   );
 
-  // 7. Budget Compliance & Utilization Metrics
+  // 7. Budget Compliance, Utilization & Contingency Metrics
   const budgetLimit =
     budget !== null && budget !== undefined && !isNaN(Number(budget)) && Number(budget) > 0
       ? Math.round(Number(budget))
-      : null;
+    : null;
 
+  const contingencyReserve = budgetLimit !== null ? Math.round(budgetLimit * 0.08) : 0;
   const withinBudget = budgetLimit !== null ? totalEstimatedCost <= budgetLimit : true;
   const remainingBudget = budgetLimit !== null ? budgetLimit - totalEstimatedCost : null;
+  const shortfall = budgetLimit !== null && totalEstimatedCost > budgetLimit
+    ? totalEstimatedCost - budgetLimit
+    : 0;
+
   const budgetUtilizationPercentage =
-    budgetLimit !== null
+    budgetLimit !== null && budgetLimit > 0
       ? parseFloat(((totalEstimatedCost / budgetLimit) * 100).toFixed(1))
       : null;
 
@@ -148,6 +263,7 @@ export function calculateTripEstimate({
     activityTotal,
     foodEstimate,
     miscellaneousEstimate,
+    contingencyReserve,
     // Preserved for compatibility with GlobeTrotter convention names
     transportation: transportTotal,
     accommodation: accommodationTotal,
@@ -163,9 +279,11 @@ export function calculateTripEstimate({
     activityTotal,
     foodEstimate,
     miscellaneousEstimate,
+    contingencyReserve,
     totalEstimatedCost,
     budget: budgetLimit,
     remainingBudget,
+    shortfall,
     withinBudget,
     budgetUtilizationPercentage,
     currency: curr,
@@ -177,4 +295,5 @@ export function calculateTripEstimate({
 
 export default {
   calculateTripEstimate,
+  allocateTripBudget,
 };

@@ -1,6 +1,7 @@
 import { ACTIVITIES_CATALOG } from '../controllers/activityController.js';
 import { generateStructuredResponse, getAiServiceStatus } from './aiService.js';
 import { ITINERARY_SEQUENCING_SCHEMA, AGENT_ITINERARY_SEQUENCING_SYSTEM_PROMPT } from '../agent/agentPrompt.js';
+import { getBaselineActivityCost, standardizeActivityPricing, isInherentlyFreeExperience } from './activityPricingService.js';
 
 /**
  * Parses time string (e.g. "09:30 AM", "14:00", "2:30 PM", "09:00") into minutes from midnight (0 - 1439).
@@ -159,6 +160,11 @@ export function formatItineraryActivity(act, defaultTime = '10:00 AM') {
   const duration = Math.max(15, Number(act.duration) || 60);
   const cost = Math.max(0, Number(act.cost) || 0);
   const time = act.time ? String(act.time).trim() : defaultTime;
+  const currency = (act.currency || 'INR').toUpperCase();
+  const pricingType = act.pricingType || (cost === 0 ? 'free' : (cost <= 100 ? 'entry_fee' : 'estimated'));
+  const pricePerPerson = act.pricePerPerson !== false;
+  const isVerified = Boolean(act.isVerified);
+  const source = act.source || (isVerified ? 'local_catalog' : (cost === 0 ? 'free_attraction' : 'category_estimate'));
 
   return {
     activityId,
@@ -170,6 +176,139 @@ export function formatItineraryActivity(act, defaultTime = '10:00 AM') {
     description: act.description || '',
     image: act.image || '',
     city: act.city || '',
+    currency,
+    pricingType,
+    pricePerPerson,
+    isVerified,
+    source,
+  };
+}
+
+/**
+ * Helper to retrieve an activity from the pool with preferred time slot categorization,
+ * or gracefully generate a contextual destination activity if pool is exhausted.
+ */
+export function getNextSlotActivity(activityPool = [], destination = 'Destination', preferredPeriod = 'morning', fallbackIndex = 0, usedNames = new Set(), currency = 'INR') {
+  const normKey = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let act = null;
+  // 1. Try finding an un-used activity matching the preferred period
+  if (preferredPeriod && Array.isArray(activityPool) && activityPool.length > 0) {
+    const candidateIdx = activityPool.findIndex(
+      (a) => categorizeActivityPeriod(a) === preferredPeriod && !usedNames.has(normKey(a.name))
+    );
+    if (candidateIdx !== -1) {
+      act = activityPool.splice(candidateIdx, 1)[0];
+      usedNames.add(normKey(act.name));
+      if (act.cost === undefined || act.cost === null || isNaN(Number(act.cost))) {
+        act.cost = getBaselineActivityCost(act.category, currency, act.name, destination);
+      } else {
+        act.cost = Number(act.cost);
+      }
+      return act;
+    }
+  }
+
+  // 2. Try finding ANY un-used activity in the pool
+  if (Array.isArray(activityPool) && activityPool.length > 0) {
+    const anyUnusedIdx = activityPool.findIndex((a) => !usedNames.has(normKey(a.name)));
+    if (anyUnusedIdx !== -1) {
+      act = activityPool.splice(anyUnusedIdx, 1)[0];
+      usedNames.add(normKey(act.name));
+      if (act.cost === undefined || act.cost === null || isNaN(Number(act.cost))) {
+        act.cost = getBaselineActivityCost(act.category, currency, act.name, destination);
+      } else {
+        act.cost = Number(act.cost);
+      }
+      return act;
+    }
+  }
+
+  // 3. Pool is exhausted or all items are already used: synthesize a distinct, authentic activity for destination
+  const cleanCity = destination || 'Destination';
+  const isINR = (currency || 'INR').toUpperCase() === 'INR';
+
+  const periodDefaults = {
+    morning: [
+      { name: `${cleanCity} Historic Old Town & Heritage Promenade`, category: 'Sightseeing', cost: 0, duration: 120 },
+      { name: `${cleanCity} Ancient Architecture & Colonial Heritage Walk`, category: 'Culture', cost: 0, duration: 120 },
+      { name: `${cleanCity} Botanical Gardens & Green Park Trail`, category: 'Nature', cost: isINR ? 50 : 5, duration: 90 },
+      { name: `${cleanCity} Sacred Temple & Ancient Shrine Heritage Trail`, category: 'Culture', cost: 0, duration: 90 },
+      { name: `${cleanCity} Hilltop Viewpoint & Panoramic Sunrise Trek`, category: 'Adventure', cost: 0, duration: 120 },
+      { name: `${cleanCity} Cycling Exploration Through Heritage Suburbs`, category: 'Adventure', cost: isINR ? 150 : 12, duration: 120 },
+      { name: `${cleanCity} Coastal Morning Promenade & Sands Walk`, category: 'Relaxation', cost: 0, duration: 90 },
+      { name: `${cleanCity} Peaceful Urban Oasis & Zen Reflection Garden`, category: 'Relaxation', cost: 0, duration: 75 },
+    ],
+    afternoon: [
+      { name: `${cleanCity} Premier Art & Cultural Heritage Museum`, category: 'Culture', cost: isINR ? 100 : 10, duration: 120 },
+      { name: `${cleanCity} Traditional Spice & Artisan Handicrafts Bazaar`, category: 'Shopping', cost: 0, duration: 120 },
+      { name: `${cleanCity} Celebrated Regional Cafe & Culinary Tasting`, category: 'Food', cost: isINR ? 150 : 15, duration: 90 },
+      { name: `${cleanCity} Royal Palace Grounds & Architecture Walk`, category: 'Culture', cost: isINR ? 150 : 12, duration: 120 },
+      { name: `${cleanCity} Riverside Boat Cruise & Scenic Skyline Tour`, category: 'Sightseeing', cost: isINR ? 350 : 20, duration: 90 },
+      { name: `${cleanCity} Contemporary Art Gallery & Modern Sculpture Park`, category: 'Culture', cost: isINR ? 50 : 8, duration: 90 },
+      { name: `${cleanCity} Regional Spice & Organic Produce Market Tour`, category: 'Food', cost: 0, duration: 75 },
+      { name: `${cleanCity} Historic Fortress Bastion & Defense Walls Hike`, category: 'Sightseeing', cost: isINR ? 50 : 6, duration: 120 },
+    ],
+    evening: [
+      { name: `${cleanCity} Sunset Promenade & Waterfront Breeze Walk`, category: 'Relaxation', cost: 0, duration: 90 },
+      { name: `${cleanCity} Authentic Street Food & Night Market Trail`, category: 'Food', cost: isINR ? 150 : 15, duration: 120 },
+      { name: `${cleanCity} Cultural Music & Evening Lounge`, category: 'Nightlife', cost: isINR ? 250 : 20, duration: 150 },
+      { name: `${cleanCity} Sunset Cafe & Regional Dessert Tasting`, category: 'Food', cost: isINR ? 150 : 12, duration: 90 },
+      { name: `${cleanCity} Night Bazaar & Traditional Handicrafts Walk`, category: 'Shopping', cost: 0, duration: 120 },
+      { name: `${cleanCity} Twilight Street Lanterns & Cultural Music Walk`, category: 'Nightlife', cost: 0, duration: 90 },
+      { name: `${cleanCity} Evening Rooftop Astronomy & Constellation Stargazing`, category: 'Adventure', cost: isINR ? 150 : 15, duration: 90 },
+      { name: `${cleanCity} Coastal Sunset Pier & Evening Harbor Trail`, category: 'Relaxation', cost: 0, duration: 90 },
+    ],
+  };
+
+  const periodOptions = periodDefaults[preferredPeriod] || periodDefaults.morning;
+
+  let picked = null;
+  for (let i = 0; i < periodOptions.length; i++) {
+    const candidate = periodOptions[(fallbackIndex + i) % periodOptions.length];
+    if (!usedNames.has(normKey(candidate.name))) {
+      picked = candidate;
+      break;
+    }
+  }
+
+  if (!picked) {
+    const allFallbackOptions = [
+      ...periodDefaults.morning,
+      ...periodDefaults.afternoon,
+      ...periodDefaults.evening,
+    ];
+    picked = allFallbackOptions.find((o) => !usedNames.has(normKey(o.name)));
+  }
+
+  if (!picked) {
+    picked = {
+      name: `${cleanCity} Curated Discovery Highlight Tour ${fallbackIndex + 1}`,
+      category: 'Sightseeing',
+      cost: 0,
+      duration: 90,
+    };
+  }
+
+  usedNames.add(normKey(picked.name));
+
+  const numCost = Number(picked.cost);
+  const finalCost = !isNaN(numCost) && numCost >= 0
+    ? numCost
+    : getBaselineActivityCost(picked.category, currency, picked.name, cleanCity);
+
+  return {
+    id: `act_${cleanCity.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${preferredPeriod}_${fallbackIndex + 1}`,
+    name: picked.name,
+    city: cleanCity,
+    category: picked.category,
+    cost: finalCost,
+    price: finalCost,
+    currency,
+    pricingType: finalCost === 0 ? 'free' : 'estimated',
+    pricePerPerson: true,
+    duration: picked.duration || 90,
+    description: `Curated ${preferredPeriod} experience in ${cleanCity}.`,
   };
 }
 
@@ -180,7 +319,7 @@ export function formatItineraryActivity(act, defaultTime = '10:00 AM') {
  * 1. Activities belong to the selected city.
  * 2. Dates are within trip dates.
  * 3. No activity overlaps another activity.
- * 4. Daily schedule is realistic.
+ * 4. Daily schedule is realistic (2 to 3 activities per day).
  * 5. Total activity cost matches the budget calculation.
  * 6. Number of nights matches date range.
  * 7. Transport dates are compatible with the itinerary.
@@ -380,27 +519,179 @@ export function validateAndFixItinerary({
       else day.evening.push(formatted);
     });
 
-    // RULE 4: Pacing check (cap at 3 major activities per day)
-    const totalDayCount = day.morning.length + day.afternoon.length + day.evening.length;
+    // RULE 4: Guarantee 2 to 3 activities per day with realistic pacing
+    const spareActivities = Array.isArray(selectedActivities) ? [...selectedActivities] : [];
+    let totalDayCount = day.morning.length + day.afternoon.length + day.evening.length;
+    if (totalDayCount < 2) {
+      fixesApplied.push(`Expanded Day ${day.dayNumber} itinerary to include a full schedule of 2-3 activities.`);
+      if (day.morning.length === 0) {
+        const morningAct = getNextSlotActivity(spareActivities, destinationCity, 'morning', day.dayNumber * 10 + 1);
+        day.morning.push(formatItineraryActivity({ ...morningAct, time: '09:30 AM' }, '09:30 AM'));
+      }
+      if (day.afternoon.length === 0) {
+        const afternoonAct = getNextSlotActivity(spareActivities, destinationCity, 'afternoon', day.dayNumber * 10 + 2);
+        day.afternoon.push(formatItineraryActivity({ ...afternoonAct, time: '02:00 PM' }, '02:00 PM'));
+      }
+      if (day.evening.length === 0 && (day.morning.length + day.afternoon.length < 3)) {
+        const eveningAct = getNextSlotActivity(spareActivities, destinationCity, 'evening', day.dayNumber * 10 + 3);
+        day.evening.push(formatItineraryActivity({ ...eveningAct, time: '06:30 PM' }, '06:30 PM'));
+      }
+      totalDayCount = day.morning.length + day.afternoon.length + day.evening.length;
+    }
+
+    // If evening is empty and there are unused selected activities, schedule them
+    if (day.evening.length === 0 && (day.morning.length + day.afternoon.length < 3)) {
+      const scheduledIds = new Set();
+      normalizedDays.forEach((d) => {
+        ['morning', 'afternoon', 'evening'].forEach((p) => {
+          (d[p] || []).forEach((a) => {
+            if (a.name) scheduledIds.add(a.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            if (a.id || a.activityId) scheduledIds.add(String(a.id || a.activityId).toLowerCase());
+          });
+        });
+      });
+      const unscheduled = (selectedActivities || []).find((a) => {
+        const nKey = (a.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const idKey = String(a.id || a.activityId || '').toLowerCase();
+        return !scheduledIds.has(nKey) && (!idKey || !scheduledIds.has(idKey));
+      });
+      if (unscheduled) {
+        day.evening.push(formatItineraryActivity({ ...unscheduled, time: '06:30 PM' }, '06:30 PM'));
+      }
+    }
+
+    totalDayCount = day.morning.length + day.afternoon.length + day.evening.length;
     if (totalDayCount > 3) {
       warnings.push(`Day ${day.dayNumber} has ${totalDayCount} activities; paced for high engagement.`);
     }
   });
 
   // ---------------------------------------------------------------------------
+  // RULE 8: Activity Uniqueness Across Entire Trip (Zero Repeated Activities)
+  // ---------------------------------------------------------------------------
+  rulesChecked.push('activity_uniqueness');
+  const tripUsedNames = new Set();
+  const sparePoolForUniqueness = Array.isArray(selectedActivities) ? [...selectedActivities] : [];
+  let fixCounter = 1;
+
+  normalizedDays.forEach((day) => {
+    ['morning', 'afternoon', 'evening'].forEach((period) => {
+      day[period].forEach((act) => {
+        const rawName = String(act.name || '').trim();
+        const normKey = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        if (!normKey || tripUsedNames.has(normKey)) {
+          // Replace duplicate with a unique activity for this destination and period
+          const replacement = getNextSlotActivity(sparePoolForUniqueness, targetCityKey, period, day.dayNumber * 10 + fixCounter++, tripUsedNames, currency);
+          fixesApplied.push(
+            `Replaced duplicate activity "${rawName || 'Activity'}" on Day ${day.dayNumber} with unique experience "${replacement.name}".`
+          );
+          act.name = replacement.name;
+          act.category = replacement.category || act.category;
+          act.description = replacement.description || act.description;
+          const repCost = Number(replacement.cost);
+          act.cost = !isNaN(repCost) && repCost >= 0 ? repCost : getBaselineActivityCost(act.category, currency, act.name, targetCityKey);
+          act.activityId = replacement.id || `act_unique_${Math.random().toString(36).substr(2, 7)}`;
+          act.currency = replacement.currency || currency;
+          act.pricingType = replacement.pricingType || (act.cost === 0 ? 'free' : 'estimated');
+          act.pricePerPerson = replacement.pricePerPerson !== false;
+          act.isVerified = Boolean(replacement.isVerified);
+          tripUsedNames.add(replacement.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        } else {
+          tripUsedNames.add(normKey);
+        }
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Authoritative Pricing & Re-Anchoring Against Catalog & Selected Activities
+  // Guarantees AI sequencing cannot invent, inflate, or alter verified activity prices
+  // ---------------------------------------------------------------------------
+  const selectedById = new Map();
+  const selectedByNormName = new Map();
+  (selectedActivities || []).forEach((sa) => {
+    if (sa.id || sa._id || sa.activityId) {
+      selectedById.set(String(sa.id || sa._id || sa.activityId), sa);
+    }
+    if (sa.name) {
+      selectedByNormName.set(sa.name.toLowerCase().replace(/[^a-z0-9]/g, ''), sa);
+    }
+  });
+
+  const catalogByCityAndNorm = new Map();
+  (ACTIVITIES_CATALOG || []).forEach((c) => {
+    const cCity = (c.city || '').toLowerCase().trim();
+    const cNorm = (c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    catalogByCityAndNorm.set(`${cCity}:${cNorm}`, c);
+  });
+
+  normalizedDays.forEach((day) => {
+    ['morning', 'afternoon', 'evening'].forEach((period) => {
+      day[period].forEach((act) => {
+        const actId = String(act.activityId || act.id || '');
+        const actKey = String(act.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cityKey = `${targetCityKey}:${actKey}`;
+
+        const matchedSelected = selectedById.get(actId) || selectedByNormName.get(actKey);
+        const matchedCatalog = catalogByCityAndNorm.get(cityKey);
+        const matched = matchedSelected || matchedCatalog;
+
+        if (matched) {
+          act.name = matched.name;
+          act.category = matched.category || act.category;
+          act.cost = Number(matched.cost !== undefined ? matched.cost : (matched.price || 0));
+          act.currency = matched.currency || currency;
+          act.pricingType = matched.pricingType || (act.cost === 0 ? 'free' : (act.cost <= 100 ? 'entry_fee' : 'estimated'));
+          act.pricePerPerson = matched.pricePerPerson !== false;
+          act.isVerified = Boolean(matched.isVerified);
+          act.source = matched.source || (act.isVerified ? 'local_catalog' : 'estimated');
+          act.duration = matched.duration || act.duration;
+          act.activityId = String(matched.id || matched._id || matched.activityId || act.activityId);
+        } else {
+          // Standardize pricing using activity pricing rules (recognizes free beaches, trails, viewpoints)
+          const standardized = standardizeActivityPricing(act, targetCityKey, currency);
+          act.cost = standardized.cost;
+          act.currency = standardized.currency;
+          act.pricingType = standardized.pricingType;
+          act.pricePerPerson = standardized.pricePerPerson !== false;
+          act.isVerified = Boolean(standardized.isVerified);
+          act.source = standardized.source;
+        }
+
+        if (act.cost === 0) {
+          act.pricingType = 'free';
+        }
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // RULE 5: Total activity cost matches the budget calculation
   // ---------------------------------------------------------------------------
   let totalScheduledActivityCost = 0;
+  const foodPerPersonDaily = budgetAnalysis?.foodEstimate
+    ? Math.round(budgetAnalysis.foodEstimate / (expectedDays * travelerCount))
+    : (currency === 'INR' ? 450 : 12);
+  const hotelPerNightShare = budgetAnalysis?.accommodationTotal && expectedNights > 0
+    ? Math.round(budgetAnalysis.accommodationTotal / expectedDays)
+    : 0;
 
   normalizedDays.forEach((day) => {
-    let dayCost = 0;
+    let dayActivitiesCost = 0;
     ['morning', 'afternoon', 'evening'].forEach((period) => {
       day[period].forEach((act) => {
-        dayCost += (Number(act.cost) || 0) * travelerCount;
+        const itemCost = Number(act.cost) || 0;
+        const isPerPerson = act.pricePerPerson !== false;
+        dayActivitiesCost += isPerPerson ? itemCost * travelerCount : itemCost;
       });
     });
-    day.estimatedCost = dayCost;
-    totalScheduledActivityCost += dayCost;
+    // Each day's estimated cost represents day's activities (group) + day's food allowance (group) + nightly hotel share
+    day.activityCost = dayActivitiesCost;
+    day.foodCost = foodPerPersonDaily * travelerCount;
+    day.hotelCost = hotelPerNightShare;
+    day.estimatedCost = dayActivitiesCost + day.foodCost + day.hotelCost;
+    totalScheduledActivityCost += dayActivitiesCost;
   });
 
   const targetActivityBudget = budgetAnalysis?.breakdown?.activities !== undefined
@@ -411,37 +702,6 @@ export function validateAndFixItinerary({
     fixesApplied.push(
       `Reconciled scheduled activity costs (${currency} ${totalScheduledActivityCost}) with budget analysis (${currency} ${targetActivityBudget}).`
     );
-
-    // If budget service has different selection, align items with selectedActivities
-    if (selectedActivities.length > 0) {
-      let actIndex = 0;
-      normalizedDays.forEach((day) => {
-        ['morning', 'afternoon', 'evening'].forEach((period) => {
-          day[period].forEach((act) => {
-            if (actIndex < selectedActivities.length) {
-              const matched = selectedActivities[actIndex];
-              act.cost = Number(matched.cost || 0);
-              act.activityId = String(matched.id || matched._id || act.activityId);
-              act.name = matched.name || act.name;
-              actIndex++;
-            }
-          });
-        });
-      });
-
-      // Recalculate day estimated costs
-      totalScheduledActivityCost = 0;
-      normalizedDays.forEach((day) => {
-        let dayCost = 0;
-        ['morning', 'afternoon', 'evening'].forEach((period) => {
-          day[period].forEach((act) => {
-            dayCost += (Number(act.cost) || 0) * travelerCount;
-          });
-        });
-        day.estimatedCost = dayCost;
-        totalScheduledActivityCost += dayCost;
-      });
-    }
   }
 
   return {
@@ -490,6 +750,7 @@ export function buildOptimizationExplanation({
 
 /**
  * Deterministically constructs initial day-by-day slots from selected options.
+ * Guarantees a full schedule with 2 to 3 100% unique activities for EACH day.
  */
 function buildDeterministicDaySlots({
   destination = 'Goa',
@@ -501,6 +762,10 @@ function buildDeterministicDaySlots({
   const days = [];
   const activityPool = [...selectedActivities];
   const dates = generateDateSequence(null, durationDays);
+  const usedNames = new Set();
+
+  const inboundMinutes = transport?.arrivalTime ? parseTimeToMinutes(transport.arrivalTime) : 660; // default ~11:00 AM
+  const outboundMinutes = transport?.departureTime ? parseTimeToMinutes(transport.departureTime) : 1080; // default ~06:00 PM
 
   for (let d = 1; d <= durationDays; d++) {
     const morning = [];
@@ -508,94 +773,41 @@ function buildDeterministicDaySlots({
     const evening = [];
 
     if (d === 1) {
-      // Day 1: Inbound travel + afternoon/evening activity
-      const eveningAct = activityPool.find((a) => categorizeActivityPeriod(a) === 'evening') || activityPool.shift();
-      if (eveningAct) {
-        evening.push(
-          formatItineraryActivity(
-            {
-              ...eveningAct,
-              time: '06:00 PM',
-            },
-            '06:00 PM'
-          )
-        );
-        const idx = activityPool.indexOf(eveningAct);
-        if (idx !== -1) activityPool.splice(idx, 1);
+      // Day 1: If arriving late afternoon (after 01:30 PM), schedule 2 activities (Afternoon + Evening).
+      // If arriving earlier in morning/midday, schedule 3 activities (Morning arrival stroll, Afternoon, Evening).
+      if (inboundMinutes <= 690) { // On or before 11:30 AM
+        const morningAct = getNextSlotActivity(activityPool, destination, 'morning', d * 10 + 1, usedNames);
+        morning.push(formatItineraryActivity({ ...morningAct, time: '11:00 AM' }, '11:00 AM'));
       }
 
-      const afternoonAct = activityPool.shift();
-      if (afternoonAct) {
-        afternoon.push(
-          formatItineraryActivity(
-            {
-              ...afternoonAct,
-              time: '03:00 PM',
-            },
-            '03:00 PM'
-          )
-        );
-      }
+      const afternoonAct = getNextSlotActivity(activityPool, destination, 'afternoon', d * 10 + 2, usedNames);
+      afternoon.push(formatItineraryActivity({ ...afternoonAct, time: '02:30 PM' }, '02:30 PM'));
+
+      const eveningAct = getNextSlotActivity(activityPool, destination, 'evening', d * 10 + 3, usedNames);
+      evening.push(formatItineraryActivity({ ...eveningAct, time: '06:30 PM' }, '06:30 PM'));
     } else if (d === durationDays) {
-      // Final Day: Morning exploration + afternoon departure prep
-      const morningAct = activityPool.find((a) => categorizeActivityPeriod(a) === 'morning') || activityPool.shift();
-      if (morningAct) {
-        morning.push(
-          formatItineraryActivity(
-            {
-              ...morningAct,
-              time: '09:30 AM',
-            },
-            '09:30 AM'
-          )
-        );
-        const idx = activityPool.indexOf(morningAct);
-        if (idx !== -1) activityPool.splice(idx, 1);
+      // Final Day: Morning exploration + Afternoon local culture/lunch
+      const morningAct = getNextSlotActivity(activityPool, destination, 'morning', d * 10 + 1, usedNames);
+      morning.push(formatItineraryActivity({ ...morningAct, time: '09:30 AM' }, '09:30 AM'));
+
+      const afternoonAct = getNextSlotActivity(activityPool, destination, 'afternoon', d * 10 + 2, usedNames);
+      afternoon.push(formatItineraryActivity({ ...afternoonAct, time: '01:30 PM' }, '01:30 PM'));
+
+      // If departure is evening (after 07:00 PM), add evening farewell activity (3 activities total)
+      if (outboundMinutes >= 1140) {
+        const eveningAct = getNextSlotActivity(activityPool, destination, 'evening', d * 10 + 3, usedNames);
+        evening.push(formatItineraryActivity({ ...eveningAct, time: '05:30 PM' }, '05:30 PM'));
       }
     } else {
-      // Mid-trip days: Morning, afternoon, and evening exploration
-      const morningAct = activityPool.find((a) => categorizeActivityPeriod(a) === 'morning') || activityPool.shift();
-      if (morningAct) {
-        morning.push(
-          formatItineraryActivity(
-            {
-              ...morningAct,
-              time: '09:30 AM',
-            },
-            '09:30 AM'
-          )
-        );
-        const idx = activityPool.indexOf(morningAct);
-        if (idx !== -1) activityPool.splice(idx, 1);
-      }
+      // Mid-trip days: Always 3 activities (Morning, Afternoon, Evening)
+      const morningAct = getNextSlotActivity(activityPool, destination, 'morning', d * 10 + 1, usedNames);
+      morning.push(formatItineraryActivity({ ...morningAct, time: '09:30 AM' }, '09:30 AM'));
 
-      const eveningAct = activityPool.find((a) => categorizeActivityPeriod(a) === 'evening') || activityPool.shift();
-      if (eveningAct) {
-        evening.push(
-          formatItineraryActivity(
-            {
-              ...eveningAct,
-              time: '06:30 PM',
-            },
-            '06:30 PM'
-          )
-        );
-        const idx = activityPool.indexOf(eveningAct);
-        if (idx !== -1) activityPool.splice(idx, 1);
-      }
+      const afternoonAct = getNextSlotActivity(activityPool, destination, 'afternoon', d * 10 + 2, usedNames);
+      afternoon.push(formatItineraryActivity({ ...afternoonAct, time: '02:00 PM' }, '02:00 PM'));
 
-      if (activityPool.length > 0) {
-        const afternoonAct = activityPool.shift();
-        afternoon.push(
-          formatItineraryActivity(
-            {
-              ...afternoonAct,
-              time: '02:30 PM',
-            },
-            '02:30 PM'
-          )
-        );
-      }
+      const eveningAct = getNextSlotActivity(activityPool, destination, 'evening', d * 10 + 3, usedNames);
+      evening.push(formatItineraryActivity({ ...eveningAct, time: '06:30 PM' }, '06:30 PM'));
     }
 
     days.push({
@@ -679,9 +891,13 @@ export async function generateItinerary({
         schema: ITINERARY_SEQUENCING_SCHEMA,
       });
 
-      if (aiResponse?.data?.days && Array.isArray(aiResponse.data.days)) {
-        candidateDays = aiResponse.data.days;
-        if (aiResponse.data.summaryExplanation) {
+      const rawDays = Array.isArray(aiResponse?.data)
+        ? aiResponse.data
+        : (aiResponse?.data?.days || []);
+
+      if (rawDays.length > 0) {
+        candidateDays = rawDays;
+        if (aiResponse?.data?.summaryExplanation) {
           proposedExplanation = aiResponse.data.summaryExplanation;
         }
       }

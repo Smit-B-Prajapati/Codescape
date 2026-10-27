@@ -100,11 +100,11 @@ export const AGENT_ITINERARY_SEQUENCING_SYSTEM_PROMPT = `You are the GlobeThrott
 Your job is to arrange selected travel activities across morning, afternoon, and evening slots for each day.
 
 RULES:
-1. Distribute only the provided activities across the days. Do NOT invent new activities.
+1. Distribute the provided activities across all days, scheduling 2 to 3 activities for EACH day.
 2. Morning activities should be scheduled between 08:30 AM and 11:30 AM.
 3. Afternoon activities should be scheduled between 12:30 PM and 04:30 PM.
 4. Evening activities should be scheduled between 05:30 PM and 09:30 PM.
-5. Provide a realistic pacing (1 to 3 activities per day).
+5. Ensure EVERY day has a full schedule with 2 to 3 activities across morning, afternoon, and evening.
 6. Provide a concise 1-sentence optimization explanation describing what was prioritized and how budget constraints were respected.
 7. Output strictly valid JSON matching the schema. Never output markdown code blocks or reasoning.`;
 
